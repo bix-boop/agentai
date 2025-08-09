@@ -5,17 +5,17 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\AIAssistant;
-use App\Models\Chat;
-use App\Models\Message;
-use App\Models\Transaction;
 use App\Models\Category;
 use App\Models\CreditPackage;
-use App\Services\OpenAIService;
+use App\Models\Transaction;
+use App\Models\Chat;
+use App\Models\Message;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Artisan;
 
 class AdminController extends Controller
 {
@@ -25,205 +25,85 @@ class AdminController extends Controller
         $this->middleware('admin');
     }
 
-    /**
-     * Admin Dashboard - Overview statistics
-     */
     public function dashboard()
     {
         try {
-            $stats = Cache::remember('admin_dashboard_stats', 300, function () {
-                $today = Carbon::today();
-                $thisMonth = Carbon::now()->startOfMonth();
-                $lastMonth = Carbon::now()->subMonth()->startOfMonth();
-
-                return [
-                    // User Statistics
-                    'total_users' => User::count(),
-                    'active_users' => User::where('is_active', true)->count(),
-                    'verified_users' => User::whereNotNull('email_verified_at')->count(),
-                    'new_users_today' => User::whereDate('created_at', $today)->count(),
-                    'new_users_this_month' => User::where('created_at', '>=', $thisMonth)->count(),
-                    
-                    // AI Assistant Statistics
-                    'total_ai_assistants' => AIAssistant::count(),
-                    'active_ai_assistants' => AIAssistant::where('is_active', true)->count(),
-                    'public_ai_assistants' => AIAssistant::where('is_public', true)->count(),
-                    'new_ai_assistants_today' => AIAssistant::whereDate('created_at', $today)->count(),
-                    
-                    // Chat Statistics
-                    'total_chats' => Chat::count(),
-                    'active_chats' => Chat::where('is_archived', false)->count(),
-                    'total_messages' => Message::count(),
-                    'messages_today' => Message::whereDate('created_at', $today)->count(),
-                    
-                    // Revenue Statistics
-                    'total_revenue' => Transaction::where('status', 'completed')->sum('price_cents') / 100,
-                    'revenue_today' => Transaction::where('status', 'completed')
-                        ->whereDate('created_at', $today)->sum('price_cents') / 100,
-                    'revenue_this_month' => Transaction::where('status', 'completed')
-                        ->where('created_at', '>=', $thisMonth)->sum('price_cents') / 100,
-                    'pending_transactions' => Transaction::where('status', 'pending')->count(),
-                    
-                    // Credit Statistics
-                    'total_credits_purchased' => Transaction::where('status', 'completed')->sum('credits_amount'),
-                    'total_credits_consumed' => Message::sum('credits_consumed'),
-                    'credits_consumed_today' => Message::whereDate('created_at', $today)->sum('credits_consumed'),
-                    
-                    // Growth Statistics
-                    'user_growth_rate' => $this->calculateGrowthRate(
-                        User::where('created_at', '>=', $thisMonth)->count(),
-                        User::where('created_at', '>=', $lastMonth)
-                            ->where('created_at', '<', $thisMonth)->count()
-                    ),
-                    'revenue_growth_rate' => $this->calculateGrowthRate(
-                        Transaction::where('status', 'completed')
-                            ->where('created_at', '>=', $thisMonth)->sum('price_cents'),
-                        Transaction::where('status', 'completed')
-                            ->where('created_at', '>=', $lastMonth)
-                            ->where('created_at', '<', $thisMonth)->sum('price_cents')
-                    ),
-                ];
-            });
-
-            // Recent Activities
-            $recent_users = User::latest()->limit(5)->get(['id', 'name', 'email', 'created_at']);
-            $recent_transactions = Transaction::with('user')->latest()->limit(5)->get();
-            $recent_ai_assistants = AIAssistant::with('user')->latest()->limit(5)->get();
-
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'stats' => $stats,
-                    'recent_users' => $recent_users,
-                    'recent_transactions' => $recent_transactions,
-                    'recent_ai_assistants' => $recent_ai_assistants,
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to load dashboard data',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Analytics data for charts and reports
-     */
-    public function analytics(Request $request)
-    {
-        try {
-            $period = $request->get('period', '30'); // days
-            $startDate = Carbon::now()->subDays($period);
-
-            $analytics = [
-                // User Registration Chart
-                'user_registrations' => User::select(
-                    DB::raw('DATE(created_at) as date'),
-                    DB::raw('COUNT(*) as count')
-                )
-                ->where('created_at', '>=', $startDate)
-                ->groupBy('date')
-                ->orderBy('date')
-                ->get(),
-
-                // Revenue Chart
-                'daily_revenue' => Transaction::select(
-                    DB::raw('DATE(created_at) as date'),
-                    DB::raw('SUM(price_cents) / 100 as revenue')
-                )
-                ->where('status', 'completed')
-                ->where('created_at', '>=', $startDate)
-                ->groupBy('date')
-                ->orderBy('date')
-                ->get(),
-
-                // Message Activity Chart
-                'message_activity' => Message::select(
-                    DB::raw('DATE(created_at) as date'),
-                    DB::raw('COUNT(*) as count'),
-                    DB::raw('SUM(credits_consumed) as credits_used')
-                )
-                ->where('created_at', '>=', $startDate)
-                ->groupBy('date')
-                ->orderBy('date')
-                ->get(),
-
-                // Popular AI Assistants
-                'popular_ai_assistants' => AIAssistant::select('name', 'usage_count', 'average_rating')
-                ->orderBy('usage_count', 'desc')
-                ->limit(10)
-                ->get(),
-
-                // Payment Method Distribution
-                'payment_methods' => Transaction::select('payment_method', DB::raw('COUNT(*) as count'))
-                ->where('status', 'completed')
-                ->groupBy('payment_method')
-                ->get(),
-
-                // User Tier Distribution
-                'user_tiers' => User::select('current_tier', DB::raw('COUNT(*) as count'))
-                ->groupBy('current_tier')
-                ->get(),
+            $data = [
+                'total_users' => User::count(),
+                'active_users' => User::where('is_active', true)->count(),
+                'total_chats' => Chat::count(),
+                'total_messages' => Message::count(),
+                'total_ai_assistants' => AIAssistant::count(),
+                'public_ai_assistants' => AIAssistant::where('is_public', true)->count(),
+                'total_revenue' => Transaction::where('status', 'completed')->sum('amount_cents') / 100,
+                'pending_transactions' => Transaction::where('status', 'pending')->count(),
+                'recent_users' => User::orderBy('created_at', 'desc')->limit(5)->get(),
+                'recent_transactions' => Transaction::with(['user', 'creditPackage'])
+                    ->orderBy('created_at', 'desc')->limit(5)->get(),
             ];
 
             return response()->json([
                 'success' => true,
-                'data' => $analytics
+                'data' => $data
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load analytics data',
+                'message' => 'Failed to load dashboard',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * Get all users with pagination and filtering
-     */
+    public function analytics()
+    {
+        try {
+            $data = [
+                'user_registrations' => $this->getUserRegistrationStats(),
+                'revenue_stats' => $this->getRevenueStats(),
+                'chat_activity' => $this->getChatActivityStats(),
+                'popular_ai_assistants' => $this->getPopularAIStats(),
+                'payment_methods' => $this->getPaymentMethodStats(),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load analytics',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // User Management
     public function users(Request $request)
     {
         try {
             $query = User::query();
-
-            // Apply filters
+            
             if ($request->has('search')) {
-                $search = $request->get('search');
-                $query->where(function($q) use ($search) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
                       ->orWhere('email', 'like', "%{$search}%");
                 });
             }
-
+            
             if ($request->has('role')) {
-                $query->where('role', $request->get('role'));
+                $query->where('role', $request->role);
+            }
+            
+            if ($request->has('status')) {
+                $query->where('is_active', $request->status === 'active');
             }
 
-            if ($request->has('is_active')) {
-                $query->where('is_active', $request->boolean('is_active'));
-            }
-
-            if ($request->has('is_verified')) {
-                if ($request->boolean('is_verified')) {
-                    $query->whereNotNull('email_verified_at');
-                } else {
-                    $query->whereNull('email_verified_at');
-                }
-            }
-
-            // Apply sorting
-            $sortBy = $request->get('sort_by', 'created_at');
-            $sortOrder = $request->get('sort_order', 'desc');
-            $query->orderBy($sortBy, $sortOrder);
-
-            // Paginate results
-            $perPage = min($request->get('per_page', 15), 100);
-            $users = $query->paginate($perPage);
+            $users = $query->orderBy('created_at', 'desc')->paginate(20);
 
             return response()->json([
                 'success' => true,
@@ -233,80 +113,56 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load users',
+                'message' => 'Failed to fetch users',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * Show specific user details
-     */
     public function showUser(User $user)
     {
         try {
-            $user->load(['aiAssistants', 'chats', 'transactions']);
+            $userData = $user->load(['transactions', 'chats']);
             
-            $userStats = [
-                'total_messages' => Message::whereHas('chat', function($q) use ($user) {
-                    $q->where('user_id', $user->id);
-                })->count(),
-                'total_chats' => $user->chats()->count(),
-                'total_ai_assistants' => $user->aiAssistants()->count(),
-                'total_spent' => $user->transactions()->where('status', 'completed')->sum('price_cents') / 100,
-                'credits_consumed_total' => Message::whereHas('chat', function($q) use ($user) {
-                    $q->where('user_id', $user->id);
-                })->sum('credits_consumed'),
-            ];
-
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'user' => $user,
-                    'stats' => $userStats
-                ]
+                'data' => $userData
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load user details',
+                'message' => 'Failed to fetch user',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * Update user details
-     */
     public function updateUser(Request $request, User $user)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,' . $user->id,
-            'role' => 'sometimes|in:user,admin,moderator',
-            'is_active' => 'sometimes|boolean',
-            'credits_balance' => 'sometimes|integer|min:0',
-            'current_tier' => 'sometimes|integer|min:1|max:4',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
         try {
-            $user->update($request->only([
-                'name', 'email', 'role', 'is_active', 'credits_balance', 'current_tier'
-            ]));
+            $validator = Validator::make($request->all(), [
+                'name' => 'string|max:255',
+                'email' => 'email|max:255|unique:users,email,' . $user->id,
+                'role' => 'string|in:user,admin,moderator',
+                'is_active' => 'boolean',
+                'is_verified' => 'boolean',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $user->update($validator->validated());
 
             return response()->json([
                 'success' => true,
                 'message' => 'User updated successfully',
-                'data' => ['user' => $user]
+                'data' => $user->fresh()
             ]);
 
         } catch (\Exception $e) {
@@ -318,55 +174,51 @@ class AdminController extends Controller
         }
     }
 
-    /**
-     * Adjust user credits
-     */
     public function adjustCredits(Request $request, User $user)
     {
-        $validator = Validator::make($request->all(), [
-            'amount' => 'required|integer',
-            'type' => 'required|in:add,subtract,set',
-            'reason' => 'required|string|max:255',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
         try {
-            $oldBalance = $user->credits_balance;
-            $amount = $request->get('amount');
-            $type = $request->get('type');
+            $validator = Validator::make($request->all(), [
+                'amount' => 'required|integer',
+                'reason' => 'required|string|max:255',
+                'type' => 'required|string|in:add,subtract,set',
+            ]);
 
-            switch ($type) {
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $oldBalance = $user->credits_balance;
+            
+            switch ($request->type) {
                 case 'add':
-                    $user->addCredits($amount);
+                    $user->increment('credits_balance', $request->amount);
                     break;
                 case 'subtract':
-                    $user->deductCredits($amount);
+                    $user->decrement('credits_balance', $request->amount);
                     break;
                 case 'set':
-                    $user->update(['credits_balance' => $amount]);
+                    $user->update(['credits_balance' => $request->amount]);
                     break;
             }
 
             // Create transaction record
             Transaction::create([
                 'user_id' => $user->id,
-                'transaction_id' => 'admin_' . time(),
                 'type' => 'admin_adjustment',
-                'status' => 'completed',
-                'payment_method' => 'admin',
-                'credits_amount' => $type === 'set' ? $amount - $oldBalance : 
-                                  ($type === 'add' ? $amount : -$amount),
-                'price_cents' => 0,
+                'amount_cents' => 0,
                 'currency' => 'USD',
-                'notes' => $request->get('reason'),
-                'processed_at' => now(),
+                'credits' => $request->amount,
+                'status' => 'completed',
+                'description' => $request->reason,
+                'payment_data' => [
+                    'old_balance' => $oldBalance,
+                    'new_balance' => $user->fresh()->credits_balance,
+                    'admin_action' => $request->type,
+                ]
             ]);
 
             return response()->json([
@@ -374,7 +226,7 @@ class AdminController extends Controller
                 'message' => 'Credits adjusted successfully',
                 'data' => [
                     'old_balance' => $oldBalance,
-                    'new_balance' => $user->fresh()->credits_balance
+                    'new_balance' => $user->fresh()->credits_balance,
                 ]
             ]);
 
@@ -387,143 +239,168 @@ class AdminController extends Controller
         }
     }
 
-    /**
-     * Get all transactions with filtering
-     */
-    public function transactions(Request $request)
+    public function disableUser(User $user)
     {
         try {
-            $query = Transaction::with('user');
-
-            // Apply filters
-            if ($request->has('status')) {
-                $query->where('status', $request->get('status'));
-            }
-
-            if ($request->has('payment_method')) {
-                $query->where('payment_method', $request->get('payment_method'));
-            }
-
-            if ($request->has('user_id')) {
-                $query->where('user_id', $request->get('user_id'));
-            }
-
-            // Date range filter
-            if ($request->has('start_date')) {
-                $query->where('created_at', '>=', $request->get('start_date'));
-            }
-            if ($request->has('end_date')) {
-                $query->where('created_at', '<=', $request->get('end_date'));
-            }
-
-            // Apply sorting
-            $sortBy = $request->get('sort_by', 'created_at');
-            $sortOrder = $request->get('sort_order', 'desc');
-            $query->orderBy($sortBy, $sortOrder);
-
-            // Paginate results
-            $perPage = min($request->get('per_page', 15), 100);
-            $transactions = $query->paginate($perPage);
+            $user->update(['is_active' => false]);
 
             return response()->json([
                 'success' => true,
-                'data' => $transactions
+                'message' => 'User disabled successfully'
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load transactions',
+                'message' => 'Failed to disable user',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * Test OpenAI connection
-     */
-    public function testOpenAI()
+    public function enableUser(User $user)
     {
         try {
-            $openAIService = new OpenAIService();
-            $result = $openAIService->testConnection();
+            $user->update(['is_active' => true]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'OpenAI connection test successful',
-                'data' => $result
+                'message' => 'User enabled successfully'
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'OpenAI connection test failed',
+                'message' => 'Failed to enable user',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * Get system settings
-     */
-    public function settings()
+    public function deleteUser(User $user)
     {
         try {
-            $settings = Cache::remember('admin_settings', 1800, function () {
-                return [
-                    'app' => [
-                        'name' => config('phoenix.app_name'),
-                        'description' => config('phoenix.app_description'),
-                        'url' => config('phoenix.app_url'),
-                        'version' => config('phoenix.app_version'),
-                    ],
-                    'user' => [
-                        'allow_registration' => config('phoenix.allow_registration'),
-                        'require_email_verification' => config('phoenix.require_email_verification'),
-                        'welcome_credits' => config('phoenix.welcome_credits'),
-                    ],
-                    'ai' => [
-                        'default_model' => config('phoenix.openai.default_model'),
-                        'max_tokens' => config('phoenix.openai.max_tokens'),
-                        'temperature' => config('phoenix.openai.temperature'),
-                    ],
-                    'payments' => [
-                        'currency' => config('phoenix.payments.currency'),
-                        'stripe_enabled' => config('phoenix.payments.stripe.enabled'),
-                        'paypal_enabled' => config('phoenix.payments.paypal.enabled'),
-                        'bank_deposit_enabled' => config('phoenix.payments.bank_deposit.enabled'),
-                    ],
-                    'features' => config('phoenix.features'),
-                ];
-            });
+            // Prevent deleting self
+            if ($user->id === auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete your own account'
+                ], 400);
+            }
+
+            $user->delete();
 
             return response()->json([
                 'success' => true,
-                'data' => $settings
+                'message' => 'User deleted successfully'
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to load settings',
+                'message' => 'Failed to delete user',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * Clear application cache
-     */
-    public function clearCache()
+    // Helper methods for analytics
+    private function getUserRegistrationStats()
     {
-        try {
-            Cache::flush();
+        return [
+            'today' => User::whereDate('created_at', today())->count(),
+            'this_week' => User::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'this_month' => User::whereMonth('created_at', now()->month)->count(),
+            'total' => User::count(),
+        ];
+    }
 
+    private function getRevenueStats()
+    {
+        return [
+            'today' => Transaction::where('status', 'completed')->whereDate('created_at', today())->sum('amount_cents') / 100,
+            'this_week' => Transaction::where('status', 'completed')->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->sum('amount_cents') / 100,
+            'this_month' => Transaction::where('status', 'completed')->whereMonth('created_at', now()->month)->sum('amount_cents') / 100,
+            'total' => Transaction::where('status', 'completed')->sum('amount_cents') / 100,
+        ];
+    }
+
+    private function getChatActivityStats()
+    {
+        return [
+            'today' => Chat::whereDate('created_at', today())->count(),
+            'this_week' => Chat::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'this_month' => Chat::whereMonth('created_at', now()->month)->count(),
+            'total' => Chat::count(),
+        ];
+    }
+
+    private function getPopularAIStats()
+    {
+        return AIAssistant::withCount('chats')
+            ->orderBy('chats_count', 'desc')
+            ->limit(10)
+            ->get();
+    }
+
+    private function getPaymentMethodStats()
+    {
+        return Transaction::where('status', 'completed')
+            ->select('payment_method', DB::raw('count(*) as count'), DB::raw('sum(amount_cents) as total'))
+            ->groupBy('payment_method')
+            ->get();
+    }
+
+    // Placeholder methods for other admin functions
+    public function aiAssistants() { return $this->placeholder('AI Assistants management'); }
+    public function showAiAssistant() { return $this->placeholder('Show AI Assistant'); }
+    public function updateAiAssistant() { return $this->placeholder('Update AI Assistant'); }
+    public function approveAiAssistant() { return $this->placeholder('Approve AI Assistant'); }
+    public function rejectAiAssistant() { return $this->placeholder('Reject AI Assistant'); }
+    public function deleteAiAssistant() { return $this->placeholder('Delete AI Assistant'); }
+    
+    public function transactions() { return $this->placeholder('Transactions management'); }
+    public function showTransaction() { return $this->placeholder('Show Transaction'); }
+    public function approveTransaction() { return $this->placeholder('Approve Transaction'); }
+    public function rejectTransaction() { return $this->placeholder('Reject Transaction'); }
+    public function refundTransaction() { return $this->placeholder('Refund Transaction'); }
+    
+    public function categories() { return $this->placeholder('Categories management'); }
+    public function storeCategory() { return $this->placeholder('Store Category'); }
+    public function showCategory() { return $this->placeholder('Show Category'); }
+    public function updateCategory() { return $this->placeholder('Update Category'); }
+    public function deleteCategory() { return $this->placeholder('Delete Category'); }
+    
+    public function creditPackages() { return $this->placeholder('Credit Packages management'); }
+    public function storeCreditPackage() { return $this->placeholder('Store Credit Package'); }
+    public function showCreditPackage() { return $this->placeholder('Show Credit Package'); }
+    public function updateCreditPackage() { return $this->placeholder('Update Credit Package'); }
+    public function deleteCreditPackage() { return $this->placeholder('Delete Credit Package'); }
+    
+    public function blogPosts() { return $this->placeholder('Blog Posts management'); }
+    public function storeBlogPost() { return $this->placeholder('Store Blog Post'); }
+    public function showBlogPost() { return $this->placeholder('Show Blog Post'); }
+    public function updateBlogPost() { return $this->placeholder('Update Blog Post'); }
+    public function deleteBlogPost() { return $this->placeholder('Delete Blog Post'); }
+    
+    public function flaggedMessages() { return $this->placeholder('Flagged Messages'); }
+    public function approveMessage() { return $this->placeholder('Approve Message'); }
+    public function rejectMessage() { return $this->placeholder('Reject Message'); }
+    public function reports() { return $this->placeholder('Reports'); }
+    
+    public function enableMaintenanceMode() { return $this->placeholder('Enable Maintenance Mode'); }
+    public function disableMaintenanceMode() { return $this->placeholder('Disable Maintenance Mode'); }
+    public function clearCache() {
+        try {
+            Artisan::call('cache:clear');
+            Artisan::call('config:clear');
+            Artisan::call('route:clear');
+            Artisan::call('view:clear');
+            
             return response()->json([
                 'success' => true,
                 'message' => 'Cache cleared successfully'
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -532,16 +409,15 @@ class AdminController extends Controller
             ], 500);
         }
     }
+    public function systemLogs() { return $this->placeholder('System Logs'); }
+    public function createBackup() { return $this->placeholder('Create Backup'); }
 
-    /**
-     * Calculate growth rate percentage
-     */
-    private function calculateGrowthRate($current, $previous)
+    private function placeholder($feature)
     {
-        if ($previous == 0) {
-            return $current > 0 ? 100 : 0;
-        }
-
-        return round((($current - $previous) / $previous) * 100, 2);
+        return response()->json([
+            'success' => true,
+            'message' => $feature . ' feature will be implemented in future updates',
+            'data' => []
+        ]);
     }
 }

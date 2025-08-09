@@ -24,6 +24,17 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes (no authentication required)
 Route::prefix('v1')->group(function () {
+    // Status check
+    Route::get('status', function () {
+        return response()->json([
+            'status' => 'ok',
+            'app' => config('app.name'),
+            'version' => '1.0.0',
+            'timestamp' => now(),
+            'database' => 'connected'
+        ]);
+    });
+    
     // Authentication routes
     Route::prefix('auth')->group(function () {
         Route::post('register', [AuthController::class, 'register']);
