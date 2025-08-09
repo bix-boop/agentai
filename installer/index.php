@@ -321,7 +321,7 @@ function buildFrontend() {
 <body>
     <div class="installer-container">
         <div class="installer-header">
-            <img src="assets/images/logo.png" alt="Phoenix AI" class="logo">
+            <div class="logo">🔥</div>
             <h1>Phoenix AI Installation Wizard</h1>
             <p>Version <?= INSTALLER_VERSION ?></p>
         </div>
