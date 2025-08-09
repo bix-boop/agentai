@@ -8,6 +8,13 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// Include PHP utilities
+require_once __DIR__ . '/includes/php_utils.php';
+require_once __DIR__ . '/includes/error_handler.php';
+
+// Initialize error handling
+ErrorHandler::init();
+
 class PhoenixInstaller {
     private $backendPath;
     private $frontendPath;
@@ -187,43 +194,57 @@ VITE_PUSHER_APP_CLUSTER=\"\${PUSHER_APP_CLUSTER}\"
     private function setupLaravel() {
         $this->log("⚙️ Setting up Laravel...");
         
-        chdir($this->backendPath);
-        
-        // Clear all caches
-        $this->runCommand("php artisan config:clear", "Config cache cleared");
-        $this->runCommand("php artisan route:clear", "Route cache cleared");
-        $this->runCommand("php artisan view:clear", "View cache cleared");
-        $this->runCommand("php artisan cache:clear", "Application cache cleared");
-        
-        // Generate application key
-        $this->runCommand("php artisan key:generate --force", "Application key generated");
-        
-        // Test Laravel
-        $output = $this->runCommand("php artisan --version", "Laravel version check", false);
-        if (!strpos($output, 'Laravel')) {
-            throw new Exception("Laravel not working properly. Output: " . $output);
+        try {
+            // Detect PHP path first
+            $phpPath = PHPUtils::detectPHPPath();
+            $this->log("✅ PHP CLI detected at: " . $phpPath);
+            
+            chdir($this->backendPath);
+            
+            // Clear all caches
+            $this->runArtisanCommand("config:clear", "Config cache cleared");
+            $this->runArtisanCommand("route:clear", "Route cache cleared");
+            $this->runArtisanCommand("view:clear", "View cache cleared");
+            $this->runArtisanCommand("cache:clear", "Application cache cleared");
+            
+            // Generate application key
+            $this->runArtisanCommand("key:generate --force", "Application key generated");
+            
+            // Test Laravel
+            $output = $this->runArtisanCommand("--version", "Laravel version check", false);
+            if (!strpos($output, 'Laravel')) {
+                throw new Exception("Laravel not working properly. Output: " . $output);
+            }
+            
+            $this->log("✅ Laravel setup completed");
+            
+        } catch (Exception $e) {
+            throw new Exception("Laravel setup failed: " . $e->getMessage());
         }
-        
-        $this->log("✅ Laravel setup completed");
     }
     
     private function runMigrations() {
         $this->log("🔄 Running database migrations...");
         
-        chdir($this->backendPath);
-        
-        // First check migration status
-        $output = $this->runCommand("php artisan migrate:status", "Migration status check", false);
-        $this->log("Migration status: " . $output);
-        
-        // Run migrations
-        $output = $this->runCommand("php artisan migrate --force --verbose", "Database migrations");
-        
-        if (strpos($output, 'Migrated:') === false && strpos($output, 'Nothing to migrate') === false) {
-            throw new Exception("Migration may have failed. Output: " . $output);
+        try {
+            chdir($this->backendPath);
+            
+            // First check migration status
+            $output = $this->runArtisanCommand("migrate:status", "Migration status check", false);
+            $this->log("Migration status: " . trim($output));
+            
+            // Run migrations
+            $output = $this->runArtisanCommand("migrate --force --verbose", "Database migrations");
+            
+            if (strpos($output, 'Migrated:') === false && strpos($output, 'Nothing to migrate') === false) {
+                throw new Exception("Migration may have failed. Output: " . $output);
+            }
+            
+            $this->log("✅ Database migrations completed");
+            
+        } catch (Exception $e) {
+            throw new Exception("Migration failed: " . $e->getMessage());
         }
-        
-        $this->log("✅ Database migrations completed");
     }
     
     private function createAdminUser($config) {
@@ -316,7 +337,7 @@ VITE_PUSHER_APP_CLUSTER=\"\${PUSHER_APP_CLUSTER}\"
         }
     }
     
-    private function setupFrontend() {
+        private function setupFrontend() {
         $this->log("🏗️ Setting up frontend...");
         
         // Check if Node.js is available
@@ -324,27 +345,59 @@ VITE_PUSHER_APP_CLUSTER=\"\${PUSHER_APP_CLUSTER}\"
         
         if ($nodeExists) {
             $this->log("Node.js detected - building frontend...");
-            chdir($this->frontendPath);
             
-            $this->runCommand("npm install --silent", "Frontend dependencies");
-            $this->runCommand("npm run build", "Frontend build");
-            
-            $this->log("✅ Frontend built successfully");
+            if (is_dir($this->frontendPath)) {
+                chdir($this->frontendPath);
+                
+                $this->runCommand("npm install --silent", "Frontend dependencies");
+                $this->runCommand("npm run build", "Frontend build");
+                
+                $this->log("✅ Frontend built successfully");
+            } else {
+                $this->log("⚠️ Frontend directory not found, skipping build");
+            }
         } else {
-            $this->log("✅ Using pre-built frontend files (Node.js not required)");
+            $this->log("✅ Using pre-built frontend files (Node.js not required)");                                                                            
         }
     }
     
     private function finalizeInstallation() {
         $this->log("🎯 Finalizing installation...");
         
-        chdir($this->backendPath);
+        try {
+            chdir($this->backendPath);
+            
+            // Cache configuration for production
+            $this->runArtisanCommand("config:cache", "Config cached");
+            $this->runArtisanCommand("route:cache", "Routes cached");
+            
+            $this->log("✅ Installation finalized");
+            
+        } catch (Exception $e) {
+            $this->log("⚠️ Finalization warning: " . $e->getMessage());
+            // Don't fail installation for caching issues
+        }
+    }
+    
+    private function runArtisanCommand($command, $description, $throwOnError = true) {
+        $this->log("Running artisan: " . $command);
         
-        // Cache configuration for production
-        $this->runCommand("php artisan config:cache", "Config cached");
-        $this->runCommand("php artisan route:cache", "Routes cached");
-        
-        $this->log("✅ Installation finalized");
+        try {
+            $output = PHPUtils::execArtisan($command, $this->backendPath);
+            $this->log("Output: " . trim($output));
+            
+            if ($throwOnError && (strpos($output, 'Error') !== false || strpos($output, 'Exception') !== false || strpos($output, 'command not found') !== false)) {
+                throw new Exception($description . " failed: " . $output);
+            }
+            
+            return $output;
+            
+        } catch (Exception $e) {
+            if ($throwOnError) {
+                throw new Exception($description . " failed: " . $e->getMessage());
+            }
+            return $e->getMessage();
+        }
     }
     
     private function runCommand($command, $description, $throwOnError = true) {
@@ -353,7 +406,7 @@ VITE_PUSHER_APP_CLUSTER=\"\${PUSHER_APP_CLUSTER}\"
         $output = shell_exec($command . " 2>&1");
         $this->log("Output: " . trim($output));
         
-        if ($throwOnError && (strpos($output, 'Error') !== false || strpos($output, 'Exception') !== false)) {
+        if ($throwOnError && (strpos($output, 'Error') !== false || strpos($output, 'Exception') !== false || strpos($output, 'command not found') !== false)) {
             throw new Exception($description . " failed: " . $output);
         }
         

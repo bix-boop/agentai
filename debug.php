@@ -1,6 +1,32 @@
 <?php
-echo "<h1>Phoenix AI Debug Information</h1>";
-echo "<h2>System Status</h2>";
+// Include PHP utilities
+require_once __DIR__ . '/installer/includes/php_utils.php';
+
+echo "<h1>🔍 Phoenix AI - Enhanced Debug Information</h1>";
+echo "<h2>📋 System Status</h2>";
+
+// PHP CLI Detection
+echo "<h3>🐘 PHP Configuration</h3>";
+echo "<table border='1' style='border-collapse: collapse; width: 100%;'>";
+echo "<tr><td><strong>PHP Version (Web)</strong></td><td>" . PHP_VERSION . "</td></tr>";
+
+try {
+    $phpPath = PHPUtils::detectPHPPath();
+    $cliVersion = PHPUtils::getPHPVersion();
+    echo "<tr><td><strong>PHP CLI Path</strong></td><td style='color:green;'>✅ " . htmlspecialchars($phpPath) . "</td></tr>";
+    echo "<tr><td><strong>PHP Version (CLI)</strong></td><td>" . htmlspecialchars($cliVersion) . "</td></tr>";
+} catch (Exception $e) {
+    echo "<tr><td><strong>PHP CLI Status</strong></td><td style='color:red;'>❌ " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+}
+
+$composerPath = PHPUtils::checkComposer();
+if ($composerPath) {
+    echo "<tr><td><strong>Composer</strong></td><td style='color:green;'>✅ Found at " . htmlspecialchars($composerPath) . "</td></tr>";
+} else {
+    echo "<tr><td><strong>Composer</strong></td><td style='color:orange;'>⚠️ Not found (not required for installation)</td></tr>";
+}
+
+echo "</table>";
 
 // Check if .env file exists
 $envFile = __DIR__ . '/backend/.env';
