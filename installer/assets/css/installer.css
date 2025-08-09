@@ -1,0 +1,744 @@
+/* Phoenix AI Installer Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+    line-height: 1.6;
+}
+
+.installer-container {
+    max-width: 900px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.installer-header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    text-align: center;
+    padding: 30px 20px;
+    border-radius: 0 0 20px 20px;
+    margin: 20px 20px 0 20px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.installer-header .logo {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 15px;
+    background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.installer-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 8px;
+}
+
+.installer-header p {
+    color: #6b7280;
+    font-size: 1.1rem;
+}
+
+/* Progress Steps */
+.installer-progress {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 30px 40px;
+    position: relative;
+}
+
+.installer-progress::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #e5e7eb;
+    z-index: 1;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    background: white;
+    padding: 0 15px;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+}
+
+.step.active .step-number {
+    background: #3B82F6;
+    color: white;
+    transform: scale(1.1);
+}
+
+.step.completed .step-number {
+    background: #10B981;
+    color: white;
+}
+
+.step-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-align: center;
+}
+
+.step.active .step-title {
+    color: #3B82F6;
+}
+
+.step.completed .step-title {
+    color: #10B981;
+}
+
+/* Content Area */
+.installer-content {
+    flex: 1;
+    background: white;
+    margin: 0 20px;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    min-height: 500px;
+}
+
+.step-content h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.step-content p {
+    color: #6b7280;
+    margin-bottom: 30px;
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+/* Forms */
+.installer-form {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+    background: white;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group small {
+    color: #6b7280;
+    font-size: 0.85rem;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Buttons */
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.btn-primary {
+    background: #3B82F6;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.btn-secondary {
+    background: #6b7280;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #4b5563;
+}
+
+.btn-success {
+    background: #10B981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
+.btn-large {
+    padding: 15px 30px;
+    font-size: 1.2rem;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    padding-top: 30px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.form-actions .btn + .btn {
+    margin-left: 15px;
+}
+
+/* Alert Boxes */
+.alert {
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid;
+}
+
+.alert-success {
+    background: #d1fae5;
+    border-color: #10B981;
+    color: #065f46;
+}
+
+.alert-error {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #991b1b;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
+}
+
+.alert-info {
+    background: #dbeafe;
+    border-color: #3B82F6;
+    color: #1e40af;
+}
+
+/* Requirements Check */
+.requirements-list {
+    list-style: none;
+    margin: 30px 0;
+}
+
+.requirements-list li {
+    padding: 12px 20px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    background: #f9fafb;
+    border-left: 4px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.requirements-list li.passed {
+    background: #d1fae5;
+    border-color: #10B981;
+    color: #065f46;
+}
+
+.requirements-list li.failed {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #991b1b;
+}
+
+.requirement-status {
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+/* Database Test */
+.database-test {
+    background: #f9fafb;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 25px;
+    margin: 25px 0;
+    text-align: center;
+}
+
+.database-test.success {
+    background: #d1fae5;
+    border-color: #10B981;
+}
+
+.database-test.error {
+    background: #fee2e2;
+    border-color: #ef4444;
+}
+
+/* Installation Log */
+.installation-log {
+    max-height: 600px;
+    overflow-y: auto;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    background: #f8f9fa;
+    margin: 20px 0;
+}
+
+.log-step {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    border-left: 4px solid #3B82F6;
+}
+
+.log-step h4 {
+    margin: 0 0 10px 0;
+    color: #1a202c;
+    font-size: 1.1rem;
+}
+
+.log-output {
+    background: #2d3748;
+    color: #e2e8f0;
+    padding: 15px;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 10px 0;
+}
+
+.log-success {
+    color: #10B981;
+    font-weight: bold;
+    margin: 10px 0;
+    font-size: 1rem;
+}
+
+/* Installation Results */
+.installation-complete {
+    text-align: center;
+    padding: 40px;
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    border: 2px solid #10B981;
+    border-radius: 15px;
+    margin: 20px 0;
+}
+
+.installation-complete h3 {
+    color: #065f46;
+    font-size: 2rem;
+    margin-bottom: 15px;
+}
+
+.installation-error {
+    text-align: center;
+    padding: 40px;
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    border: 2px solid #ef4444;
+    border-radius: 15px;
+    margin: 20px 0;
+}
+
+.installation-error h3 {
+    color: #991b1b;
+    font-size: 2rem;
+    margin-bottom: 15px;
+}
+
+.next-steps {
+    text-align: left;
+    margin: 25px 0;
+    padding: 25px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.next-steps h4 {
+    color: #1a202c;
+    margin-bottom: 15px;
+}
+
+.next-steps ul {
+    list-style: none;
+}
+
+.next-steps li {
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f4f6;
+    position: relative;
+    padding-left: 25px;
+}
+
+.next-steps li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #10B981;
+    font-weight: bold;
+}
+
+/* Installation Summary */
+.installation-summary {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    padding: 25px;
+    border-radius: 12px;
+    margin: 25px 0;
+    border: 2px solid #3B82F6;
+}
+
+.installation-summary h3 {
+    color: #1e40af;
+    margin-bottom: 15px;
+}
+
+.installation-summary ul {
+    list-style: none;
+}
+
+.installation-summary li {
+    padding: 8px 0;
+    font-weight: 500;
+}
+
+/* Warning Box */
+.warning-box {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 2px solid #f59e0b;
+    padding: 25px;
+    border-radius: 12px;
+    margin: 25px 0;
+}
+
+.warning-box h4 {
+    color: #92400e;
+    margin-bottom: 15px;
+}
+
+.warning-box ul {
+    list-style: none;
+}
+
+.warning-box li {
+    padding: 5px 0;
+    position: relative;
+    padding-left: 25px;
+}
+
+.warning-box li::before {
+    content: '⚠️';
+    position: absolute;
+    left: 0;
+}
+
+/* Footer */
+.installer-footer {
+    text-align: center;
+    padding: 20px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .installer-container {
+        margin: 10px;
+    }
+    
+    .installer-header {
+        margin: 10px;
+        padding: 20px 15px;
+    }
+    
+    .installer-header h1 {
+        font-size: 2rem;
+    }
+    
+    .installer-progress {
+        margin: 20px 15px;
+        flex-wrap: wrap;
+    }
+    
+    .step {
+        margin-bottom: 15px;
+    }
+    
+    .step-number {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .step-title {
+        font-size: 0.8rem;
+    }
+    
+    .installer-content {
+        margin: 0 10px;
+        padding: 25px 20px;
+    }
+    
+    .step-content h2 {
+        font-size: 1.5rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+}
+
+/* Loading Animation */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Progress Animation */
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 20px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+/* Welcome Section */
+.welcome-content {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.welcome-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 25px;
+    margin: 40px 0;
+}
+
+.feature-card {
+    background: #f9fafb;
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.feature-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+    border-radius: 10px;
+    margin: 0 auto 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+}
+
+.feature-card h4 {
+    color: #1a202c;
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+}
+
+.feature-card p {
+    color: #6b7280;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* Two Column Layout */
+.two-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin: 30px 0;
+}
+
+@media (max-width: 768px) {
+    .two-column {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+/* Success Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* Status Indicators */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-error {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* Installation Progress Indicator */
+.installation-progress-bar {
+    width: 100%;
+    height: 20px;
+    background: #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 20px 0;
+    position: relative;
+}
+
+.installation-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10B981, #3B82F6);
+    border-radius: 10px;
+    transition: width 1s ease;
+    position: relative;
+}
+
+.installation-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
