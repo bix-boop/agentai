@@ -150,7 +150,7 @@ class ErrorHandler {
             $backendPath = dirname(__DIR__, 2) . '/backend';
             if (file_exists($backendPath . '/artisan')) {
                 $output = PHPUtils::execArtisan("--version", $backendPath);
-                if (strpos($output, 'Laravel') !== false) {
+                if (strpos($output, 'Laravel Framework') !== false || strpos($output, 'Laravel') !== false) {
                     $results['laravel'] = ['status' => 'PASS', 'message' => trim($output)];
                 } else {
                     $results['laravel'] = ['status' => 'FAIL', 'message' => 'Laravel not responding properly'];

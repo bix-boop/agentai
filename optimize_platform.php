@@ -120,7 +120,7 @@ try {
     if (file_exists($backendPath . '/artisan')) {
         try {
             $output = PHPUtils::execArtisan("--version", $backendPath);
-            if (strpos($output, 'Laravel') !== false) {
+            if (strpos($output, 'Laravel Framework') !== false || strpos($output, 'Laravel') !== false) {
                 echo "<p class='success'>✅ Laravel working: " . htmlspecialchars(trim($output)) . "</p>";
                 $optimizations[] = "Laravel functionality verified";
             } else {
