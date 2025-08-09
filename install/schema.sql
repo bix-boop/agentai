@@ -1,0 +1,68 @@
+CREATE TABLE IF NOT EXISTS users (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  email VARCHAR(190) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role ENUM('admin','user') NOT NULL DEFAULT 'admin',
+  status ENUM('active','disabled') NOT NULL DEFAULT 'active',
+  credits BIGINT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS settings (
+  `key` VARCHAR(100) PRIMARY KEY,
+  `value` TEXT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS assistants (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  slug VARCHAR(160) NOT NULL UNIQUE,
+  expertise VARCHAR(150) NULL,
+  description TEXT NULL,
+  avatar_path VARCHAR(255) NULL,
+  training MEDIUMTEXT NULL,
+  config_json JSON NULL,
+  visibility ENUM('public','private') NOT NULL DEFAULT 'public',
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS categories (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  icon VARCHAR(100) NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS assistant_category (
+  assistant_id INT UNSIGNED NOT NULL,
+  category_id INT UNSIGNED NOT NULL,
+  PRIMARY KEY (assistant_id, category_id),
+  CONSTRAINT fk_ac_assistant FOREIGN KEY (assistant_id) REFERENCES assistants(id) ON DELETE CASCADE,
+  CONSTRAINT fk_ac_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS conversations (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NULL,
+  assistant_id INT UNSIGNED NOT NULL,
+  lang VARCHAR(10) NULL,
+  tone VARCHAR(40) NULL,
+  style VARCHAR(40) NULL,
+  memory_limit INT NOT NULL DEFAULT 8,
+  created_at DATETIME NOT NULL,
+  CONSTRAINT fk_conv_assistant FOREIGN KEY (assistant_id) REFERENCES assistants(id) ON DELETE CASCADE,
+  CONSTRAINT fk_conv_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS messages (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  conversation_id BIGINT UNSIGNED NOT NULL,
+  sender ENUM('user','assistant') NOT NULL,
+  content MEDIUMTEXT NOT NULL,
+  tokens INT NULL,
+  created_at DATETIME NOT NULL,
+  CONSTRAINT fk_msg_conv FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
