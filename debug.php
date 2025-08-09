@@ -4,7 +4,12 @@ echo "<h2>System Status</h2>";
 
 // Check if .env file exists
 $envFile = __DIR__ . '/backend/.env';
+echo "<p><strong>.env file path:</strong> " . htmlspecialchars($envFile) . "</p>";
 echo "<p><strong>.env file:</strong> " . (file_exists($envFile) ? "✅ Found" : "❌ Missing") . "</p>";
+
+// Also check current directory
+echo "<p><strong>Current directory:</strong> " . htmlspecialchars(__DIR__) . "</p>";
+echo "<p><strong>Backend directory exists:</strong> " . (is_dir(__DIR__ . '/backend') ? "✅ Yes" : "❌ No") . "</p>";
 
 if (file_exists($envFile)) {
     echo "<p><strong>.env content preview:</strong></p>";

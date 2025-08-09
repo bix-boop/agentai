@@ -39,12 +39,97 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Invalid OpenAI API key format. Should start with 'sk-' followed by alphanumeric characters");
         }
         
-        // Store config in session
-        foreach ($config as $key => $value) {
-            $_SESSION['installer_config'][$key] = $value;
+        // Merge with database config from previous step
+        $dbConfig = $_SESSION['database_config'] ?? [];
+        $_SESSION['installer_config'] = array_merge($config, [
+            'db_host' => $dbConfig['host'] ?? '',
+            'db_port' => $dbConfig['port'] ?? '3306',
+            'db_name' => $dbConfig['database'] ?? '',
+            'db_username' => $dbConfig['username'] ?? '',
+            'db_password' => $dbConfig['password'] ?? '',
+        ]);
+        
+        // Generate .env file immediately
+        $backendPath = dirname(__DIR__) . '/backend';
+        $envPath = $backendPath . '/.env';
+        
+        // Create .env content
+        $envContent = "APP_NAME=\"{$config['site_name']}\"
+APP_ENV=production
+APP_KEY=base64:" . base64_encode(random_bytes(32)) . "
+APP_DEBUG=false
+APP_URL={$config['site_url']}
+
+LOG_CHANNEL=stack
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=error
+
+DB_CONNECTION=mysql
+DB_HOST={$dbConfig['host']}
+DB_PORT={$dbConfig['port']}
+DB_DATABASE={$dbConfig['database']}
+DB_USERNAME={$dbConfig['username']}
+DB_PASSWORD={$dbConfig['password']}
+
+BROADCAST_DRIVER=log
+CACHE_DRIVER=file
+FILESYSTEM_DISK=local
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+
+MEMCACHED_HOST=127.0.0.1
+
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+
+MAIL_MAILER=smtp
+MAIL_HOST=mailpit
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_ENCRYPTION=null
+MAIL_FROM_ADDRESS=\"hello@example.com\"
+MAIL_FROM_NAME=\"\${APP_NAME}\"
+
+OPENAI_API_KEY={$config['openai_api_key']}
+
+STRIPE_KEY=
+STRIPE_SECRET=
+STRIPE_WEBHOOK_SECRET=
+
+PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_WEBHOOK_ID=
+
+PUSHER_APP_ID=
+PUSHER_APP_KEY=
+PUSHER_APP_SECRET=
+PUSHER_HOST=
+PUSHER_PORT=443
+PUSHER_SCHEME=https
+PUSHER_APP_CLUSTER=mt1
+
+VITE_APP_NAME=\"\${APP_NAME}\"
+VITE_PUSHER_APP_KEY=\"\${PUSHER_APP_KEY}\"
+VITE_PUSHER_HOST=\"\${PUSHER_HOST}\"
+VITE_PUSHER_PORT=\"\${PUSHER_PORT}\"
+VITE_PUSHER_SCHEME=\"\${PUSHER_SCHEME}\"
+VITE_PUSHER_APP_CLUSTER=\"\${PUSHER_APP_CLUSTER}\"
+";
+        
+        // Write .env file
+        if (!is_dir($backendPath)) {
+            throw new Exception("Backend directory not found at: " . $backendPath);
         }
         
-        $success = "Configuration saved successfully!";
+        $result = file_put_contents($envPath, $envContent);
+        if ($result === false) {
+            throw new Exception("Failed to write .env file. Check permissions for: " . $backendPath);
+        }
+        
+        $success = "Configuration saved and .env file created successfully!";
         
         // Redirect to installation step
         header('Location: ?step=5');

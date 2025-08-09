@@ -271,11 +271,35 @@ VITE_PUSHER_SCHEME=\"\${PUSHER_SCHEME}\"
 VITE_PUSHER_APP_CLUSTER=\"\${PUSHER_APP_CLUSTER}\"
 ";
     
-    file_put_contents('../backend/.env', $envContent);
+    $backendPath = dirname(__DIR__) . '/backend';
+    $envPath = $backendPath . '/.env';
+    
+    if (!is_dir($backendPath)) {
+        throw new Exception("Backend directory not found at: " . $backendPath);
+    }
+    
+    if (!is_writable(dirname($envPath))) {
+        throw new Exception("Cannot write to backend directory. Check permissions: " . dirname($envPath));
+    }
+    
+    $result = file_put_contents($envPath, $envContent);
+    if ($result === false) {
+        throw new Exception("Failed to write .env file to: " . $envPath);
+    }
 }
 
 function runMigrations() {
-    chdir('../backend');
+    $backendPath = dirname(__DIR__) . '/backend';
+    
+    if (!is_dir($backendPath)) {
+        throw new Exception("Backend directory not found at: " . $backendPath);
+    }
+    
+    if (!file_exists($backendPath . '/artisan')) {
+        throw new Exception("Laravel artisan not found at: " . $backendPath . '/artisan');
+    }
+    
+    chdir($backendPath);
     exec('php artisan migrate --force 2>&1', $output, $returnCode);
     
     if ($returnCode !== 0) {
@@ -284,14 +308,15 @@ function runMigrations() {
 }
 
 function createAdminUser() {
-    $app = $_SESSION['app_config'];
-    chdir('../backend');
+    $config = $_SESSION['installer_config'];
+    $backendPath = dirname(__DIR__) . '/backend';
+    chdir($backendPath);
     
     $command = sprintf(
         'php artisan tinker --execute="App\Models\User::create([\'name\' => \'%s\', \'email\' => \'%s\', \'password\' => bcrypt(\'%s\'), \'role\' => \'admin\', \'email_verified_at\' => now(), \'credits_balance\' => 100000]);"',
-        addslashes($app['admin_name']),
-        addslashes($app['admin_email']),
-        addslashes($app['admin_password'])
+        addslashes($config['admin_name']),
+        addslashes($config['admin_email']),
+        addslashes($config['admin_password'])
     );
     
     exec($command . ' 2>&1', $output, $returnCode);
@@ -302,7 +327,8 @@ function createAdminUser() {
 }
 
 function setupDefaultData() {
-    chdir('../backend');
+    $backendPath = dirname(__DIR__) . '/backend';
+    chdir($backendPath);
     exec('php artisan db:seed --force 2>&1', $output, $returnCode);
     
     if ($returnCode !== 0) {
@@ -311,7 +337,15 @@ function setupDefaultData() {
 }
 
 function buildFrontend() {
-    chdir('../frontend');
+    $frontendPath = dirname(__DIR__) . '/frontend';
+    
+    // Only build if Node.js is available
+    $nodeExists = !empty(shell_exec('which node 2>/dev/null'));
+    if (!$nodeExists) {
+        return; // Skip frontend build if Node.js not available
+    }
+    
+    chdir($frontendPath);
     exec('npm install 2>&1', $output, $returnCode);
     
     if ($returnCode !== 0) {
