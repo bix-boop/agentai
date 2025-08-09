@@ -17,20 +17,32 @@ class Transaction extends Model
         'type',
         'status',
         'payment_method',
-        'amount_cents',
+        'credits_amount',
+        'price_cents',
         'currency',
-        'credits',
-        'description',
-        'payment_data',
-        'processed_at',
+        'discount_applied',
+        'gateway_transaction_id',
+        'gateway_response',
+        'payment_intent_id',
+        'invoice_url',
+        'bank_reference',
+        'bank_verified_at',
+        'verified_by',
+        'metadata',
         'notes',
+        'ip_address',
+        'user_agent',
+        'processed_at',
     ];
 
     protected $casts = [
-        'payment_data' => 'array',
+        'gateway_response' => 'array',
+        'metadata' => 'array',
         'processed_at' => 'datetime',
-        'amount_cents' => 'integer',
-        'credits' => 'integer',
+        'bank_verified_at' => 'datetime',
+        'price_cents' => 'integer',
+        'credits_amount' => 'integer',
+        'discount_applied' => 'decimal:2',
     ];
 
     protected $dates = [
@@ -51,7 +63,7 @@ class Transaction extends Model
     // Accessors
     public function getAmountAttribute()
     {
-        return $this->amount_cents / 100;
+        return $this->price_cents / 100;
     }
 
     public function getFormattedAmountAttribute()

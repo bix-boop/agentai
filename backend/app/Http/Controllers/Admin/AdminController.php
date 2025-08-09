@@ -35,7 +35,7 @@ class AdminController extends Controller
                 'total_messages' => Message::count(),
                 'total_ai_assistants' => AIAssistant::count(),
                 'public_ai_assistants' => AIAssistant::where('is_public', true)->count(),
-                'total_revenue' => Transaction::where('status', 'completed')->sum('amount_cents') / 100,
+                'total_revenue' => Transaction::where('status', 'completed')->sum('price_cents') / 100,
                 'pending_transactions' => Transaction::where('status', 'pending')->count(),
                 'recent_users' => User::orderBy('created_at', 'desc')->limit(5)->get(),
                 'recent_transactions' => Transaction::with(['user', 'creditPackage'])
