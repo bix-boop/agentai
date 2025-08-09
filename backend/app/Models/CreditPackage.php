@@ -13,28 +13,33 @@ class CreditPackage extends Model
     protected $fillable = [
         'name',
         'description',
+        'image',
         'credits',
         'price_cents',
         'currency',
         'tier',
         'features',
+        'ai_access',
         'is_popular',
         'is_active',
         'sort_order',
+        'purchase_count',
         'discount_percentage',
-        'valid_until',
+        'sale_ends_at',
     ];
 
     protected $casts = [
         'features' => 'array',
+        'ai_access' => 'array',
         'is_popular' => 'boolean',
         'is_active' => 'boolean',
         'price_cents' => 'integer',
         'credits' => 'integer',
         'tier' => 'integer',
         'sort_order' => 'integer',
+        'purchase_count' => 'integer',
         'discount_percentage' => 'decimal:2',
-        'valid_until' => 'datetime',
+        'sale_ends_at' => 'datetime',
     ];
 
     // Relationships
@@ -92,12 +97,12 @@ class CreditPackage extends Model
     public function isOnSale(): bool
     {
         return $this->discount_percentage > 0 && 
-               ($this->valid_until === null || $this->valid_until->isFuture());
+               ($this->sale_ends_at === null || $this->sale_ends_at->isFuture());
     }
 
     public function isExpired(): bool
     {
-        return $this->valid_until !== null && $this->valid_until->isPast();
+        return $this->sale_ends_at !== null && $this->sale_ends_at->isPast();
     }
 
     public function calculateSavings(): float

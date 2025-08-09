@@ -44,6 +44,16 @@ if ($requestPath === '/setup-vendor') {
     exit;
 }
 
+if ($requestPath === '/verify-installation') {
+    header('Location: /verify_installation.php');
+    exit;
+}
+
+if ($requestPath === '/final-optimization') {
+    header('Location: /final_optimization.php');
+    exit;
+}
+
 // Handle API requests
 if (strpos($requestPath, '/api/') === 0) {
     // Check if backend is accessible
