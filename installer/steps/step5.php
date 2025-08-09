@@ -33,6 +33,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "<h4>🔄 Running database migrations...</h4>";
         $output = shell_exec("cd {$backendPath} && php artisan migrate --force 2>&1");
         echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
+        if (strpos($output, 'Migration table created successfully') !== false || strpos($output, 'Migrated:') !== false) {
+            echo "<p class='log-success'>✅ Database migrations completed</p>";
+        } else {
+            throw new Exception("Database migration failed: " . $output);
+        }
         echo "</div>";
 
         // Create admin user
@@ -210,15 +215,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <h3>🎉 Installation Complete!</h3>
             <p>Phoenix AI has been successfully installed and configured.</p>
             <div class='next-steps'>
-                <h4>Next Steps:</h4>
+                <h4>What was installed:</h4>
                 <ul>
-                    <li>Visit your admin dashboard to configure settings</li>
-                    <li>Set up payment gateways (Stripe, PayPal)</li>
-                    <li>Customize your AI assistants</li>
-                    <li>Configure email settings</li>
+                    <li>✅ Database tables created</li>
+                    <li>✅ Admin user created</li>
+                    <li>✅ Default categories and AI assistants</li>
+                    <li>✅ Credit packages configured</li>
+                    <li>✅ Frontend files prepared</li>
                 </ul>
             </div>
-            <form method='post' action='?step=6'>
+            <div class='alert alert-success'>
+                <strong>🚀 Ready to go!</strong><br>
+                Your Phoenix AI platform is now ready. Click continue to finish setup.
+            </div>
+            <form method='get' action='?step=6'>
                 <button type='submit' class='btn btn-primary'>Continue to Completion</button>
             </form>
         </div>";

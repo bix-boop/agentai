@@ -14,21 +14,29 @@ define('REQUIRED_EXTENSIONS', [
 $step = $_GET['step'] ?? 1;
 $step = max(1, min(6, intval($step)));
 
-// Handle form submissions
+// Handle form submissions and step progression
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    switch ($step) {
-        case 2:
-            handleRequirementsCheck();
-            break;
-        case 3:
-            handleDatabaseSetup();
-            break;
-        case 4:
-            handleApplicationSetup();
-            break;
-        case 5:
-            handleFinalInstallation();
-            break;
+    try {
+        switch ($step) {
+            case 1:
+                // Welcome step - just move to next
+                header('Location: ?step=2');
+                exit;
+            case 2:
+                handleRequirementsCheck();
+                break;
+            case 3:
+                handleDatabaseSetup();
+                break;
+            case 4:
+                handleApplicationSetup();
+                break;
+            case 5:
+                // This step handles its own output, don't redirect
+                break;
+        }
+    } catch (Exception $e) {
+        $_SESSION['installer_error'] = $e->getMessage();
     }
 }
 
@@ -127,7 +135,6 @@ function handleApplicationSetup() {
     if (empty($admin_name)) $errors[] = "Admin name is required.";
     if (empty($admin_email)) $errors[] = "Admin email is required.";
     if (empty($admin_password)) $errors[] = "Admin password is required.";
-    if (empty($openai_api_key)) $errors[] = "OpenAI API key is required.";
     
     if (!filter_var($admin_email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = "Admin email must be a valid email address.";
@@ -138,14 +145,24 @@ function handleApplicationSetup() {
     }
     
     if (empty($errors)) {
-        $_SESSION['app_config'] = [
+        // Merge database and app config for step 5
+        $dbConfig = $_SESSION['database_config'] ?? [];
+        $_SESSION['installer_config'] = [
             'site_name' => $site_name,
             'site_url' => rtrim($site_url, '/'),
             'admin_name' => $admin_name,
             'admin_email' => $admin_email,
             'admin_password' => $admin_password,
             'openai_api_key' => $openai_api_key,
+            'db_host' => $dbConfig['host'] ?? '',
+            'db_port' => $dbConfig['port'] ?? '3306',
+            'db_name' => $dbConfig['database'] ?? '',
+            'db_username' => $dbConfig['username'] ?? '',
+            'db_password' => $dbConfig['password'] ?? '',
         ];
+        
+        // Also create .env file now
+        generateEnvFile();
         
         header('Location: ?step=5');
         exit;
@@ -187,25 +204,24 @@ function handleFinalInstallation() {
 }
 
 function generateEnvFile() {
-    $db = $_SESSION['database_config'];
-    $app = $_SESSION['app_config'];
+    $config = $_SESSION['installer_config'];
     
-    $envContent = "APP_NAME=\"{$app['site_name']}\"
+    $envContent = "APP_NAME=\"{$config['site_name']}\"
 APP_ENV=production
 APP_KEY=base64:" . base64_encode(random_bytes(32)) . "
 APP_DEBUG=false
-APP_URL={$app['site_url']}
+APP_URL={$config['site_url']}
 
 LOG_CHANNEL=stack
 LOG_DEPRECATIONS_CHANNEL=null
 LOG_LEVEL=error
 
 DB_CONNECTION=mysql
-DB_HOST={$db['host']}
-DB_PORT={$db['port']}
-DB_DATABASE={$db['database']}
-DB_USERNAME={$db['username']}
-DB_PASSWORD={$db['password']}
+DB_HOST={$config['db_host']}
+DB_PORT={$config['db_port']}
+DB_DATABASE={$config['db_name']}
+DB_USERNAME={$config['db_username']}
+DB_PASSWORD={$config['db_password']}
 
 BROADCAST_DRIVER=log
 CACHE_DRIVER=file
@@ -229,7 +245,7 @@ MAIL_ENCRYPTION=null
 MAIL_FROM_ADDRESS=\"hello@example.com\"
 MAIL_FROM_NAME=\"\${APP_NAME}\"
 
-OPENAI_API_KEY={$app['openai_api_key']}
+OPENAI_API_KEY={$config['openai_api_key']}
 
 STRIPE_KEY=
 STRIPE_SECRET=
