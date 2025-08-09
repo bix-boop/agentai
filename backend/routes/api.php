@@ -202,12 +202,12 @@ Route::prefix('v1/admin')->middleware(['auth:sanctum', 'admin'])->group(function
         Route::delete('/{creditPackage}', [AdminController::class, 'deleteCreditPackage']);
     });
 
-                    // System settings
-                Route::prefix('settings')->group(function () {
-                    Route::get('/', [App\Http\Controllers\Admin\SettingsController::class, 'index']);
-                    Route::put('/', [App\Http\Controllers\Admin\SettingsController::class, 'update']);
-                    Route::post('test-openai', [App\Http\Controllers\Admin\SettingsController::class, 'testOpenAI']);
-                });
+    // System settings
+    Route::prefix('settings')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\SettingsController::class, 'index']);
+        Route::put('/', [App\Http\Controllers\Admin\SettingsController::class, 'update']);
+        Route::post('test-openai', [App\Http\Controllers\Admin\SettingsController::class, 'testOpenAI']);
+    });
 
     // Blog management
     Route::prefix('blog')->group(function () {

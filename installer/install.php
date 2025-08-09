@@ -260,7 +260,16 @@ VITE_PUSHER_APP_CLUSTER=\"\${PUSHER_APP_CLUSTER}\"
             // Run migrations
             $output = $this->runArtisanCommand("migrate --force --verbose", "Database migrations");
             
-            if (strpos($output, 'Migrated:') === false && strpos($output, 'Nothing to migrate') === false) {
+            // Check for successful migration indicators
+            $hasErrors = strpos($output, 'ERROR') !== false || strpos($output, 'SQLSTATE') !== false;
+            $hasSuccess = (
+                strpos($output, 'Migrated:') !== false ||
+                strpos($output, 'Nothing to migrate') !== false ||
+                strpos($output, 'DONE') !== false ||
+                strpos($output, 'INFO Running migrations') !== false
+            );
+            
+            if ($hasErrors || !$hasSuccess) {
                 throw new Exception("Migration may have failed. Output: " . $output);
             }
             
@@ -319,53 +328,16 @@ VITE_PUSHER_APP_CLUSTER=\"\${PUSHER_APP_CLUSTER}\"
         chdir($this->backendPath);
         
         try {
-            $config = $_SESSION['installer_config'];
-            $pdo = new PDO(
-                "mysql:host={$config['db_host']};port={$config['db_port']};dbname={$config['db_name']}",
-                $config['db_username'],
-                $config['db_password'],
-                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-            );
+            // Use Laravel seeders for proper data seeding
+            $output = $this->runArtisanCommand("db:seed --force", "Database seeding");
             
-            // Create categories
-            $categories = [
-                ['Business', 'business', 'Expert business advice and consulting', '#3B82F6'],
-                ['Technology', 'technology', 'Technology support and programming help', '#10B981'],
-                ['Creative', 'creative', 'Creative writing and artistic assistance', '#F59E0B'],
-                ['Education', 'education', 'Learning support and tutoring', '#8B5CF6'],
-                ['Health', 'health', 'Health and wellness guidance', '#EF4444'],
-                ['Legal', 'legal', 'Legal advice and document assistance', '#6B7280']
-            ];
-            
-            foreach ($categories as $index => $category) {
-                $stmt = $pdo->prepare("
-                    INSERT IGNORE INTO categories (name, slug, description, color, is_active, show_on_homepage, sort_order, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, 1, 1, ?, NOW(), NOW())
-                ");
-                $stmt->execute([$category[0], $category[1], $category[2], $category[3], $index + 1]);
-            }
-            
-            // Create credit packages
-            $packages = [
-                ['Starter Pack', '10,000 credits perfect for getting started', 10000, 999, 'USD', 1, false],
-                ['Professional Pack', '50,000 credits for regular users', 50000, 2999, 'USD', 2, true],
-                ['Business Pack', '150,000 credits for power users', 150000, 7999, 'USD', 3, false],
-                ['Enterprise Pack', '500,000 credits for businesses', 500000, 19999, 'USD', 4, false]
-            ];
-            
-            foreach ($packages as $index => $package) {
-                $features = json_encode(['Access to all AI assistants', 'Image generation', 'Voice features', 'Priority support']);
-                
-                $stmt = $pdo->prepare("
-                    INSERT IGNORE INTO credit_packages (name, description, credits, price_cents, currency, tier, features, is_popular, is_active, sort_order, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, NOW(), NOW())
-                ");
-                $stmt->execute([$package[0], $package[1], $package[2], $package[3], $package[4], $package[5], $features, $package[6], $index + 1]);
+            if (strpos($output, 'ERROR') !== false || strpos($output, 'SQLSTATE') !== false) {
+                throw new Exception("Seeding may have failed. Output: " . $output);
             }
             
             $this->log("✅ Default data seeded successfully");
             
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
             throw new Exception("Failed to seed default data: " . $e->getMessage());
         }
     }

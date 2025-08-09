@@ -32,8 +32,8 @@ class SettingsController extends Controller
                 'default_currency' => 'USD',
                 
                 // AI Settings
-                'openai_api_key' => config('openai.api_key') ? '••••••••' : '',
-                'openai_organization' => config('openai.organization', ''),
+                'openai_api_key' => config('phoenix.openai.api_key') ? '••••••••' : '',
+                'openai_organization' => config('phoenix.openai.organization', ''),
                 'default_ai_model' => config('phoenix.openai.default_model', 'gpt-3.5-turbo'),
                 'max_tokens' => config('phoenix.openai.max_tokens', 2000),
                 'temperature' => config('phoenix.openai.temperature', 0.7),
