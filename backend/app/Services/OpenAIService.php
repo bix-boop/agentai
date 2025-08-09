@@ -19,14 +19,19 @@ class OpenAIService
 
     public function __construct()
     {
-        $this->apiKey = config('services.openai.api_key');
+        $this->apiKey = config('phoenix.openai.api_key');
+        
+        if (empty($this->apiKey)) {
+            throw new Exception('OpenAI API key not configured. Please add your API key in the admin settings.');
+        }
+        
         $this->client = new Client([
             'base_uri' => $this->baseUrl,
             'headers' => [
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
             ],
-            'timeout' => 120,
+            'timeout' => config('phoenix.openai.timeout', 120),
         ]);
     }
 

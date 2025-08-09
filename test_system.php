@@ -1,4 +1,7 @@
 <?php
+// Include PHP utilities
+require_once __DIR__ . '/installer/includes/php_utils.php';
+
 echo "<h1>🧪 Phoenix AI - Complete System Test</h1>";
 
 $tests = [];
@@ -66,18 +69,25 @@ runTest("PHP Syntax Check", function() {
         '/backend/app/Http/Middleware/AdminMiddleware.php',
     ];
     
-    foreach ($files as $file) {
-        $fullPath = __DIR__ . $file;
-        if (!file_exists($fullPath)) {
-            return "Missing file: " . $file;
-        }
+    try {
+        $phpPath = PHPUtils::detectPHPPath();
         
-        $output = shell_exec("php -l " . escapeshellarg($fullPath) . " 2>&1");
-        if (strpos($output, 'No syntax errors') === false) {
-            return "Syntax error in " . $file . ": " . $output;
+        foreach ($files as $file) {
+            $fullPath = __DIR__ . $file;
+            if (!file_exists($fullPath)) {
+                return "Missing file: " . $file;
+            }
+            
+            $output = shell_exec("$phpPath -l " . escapeshellarg($fullPath) . " 2>&1");
+            if (strpos($output, 'No syntax errors') === false) {
+                return "Syntax error in " . $file . ": " . $output;
+            }
         }
+        return true;
+        
+    } catch (Exception $e) {
+        return "PHP CLI not available: " . $e->getMessage();
     }
-    return true;
 });
 
 // Test 3: Laravel Configuration
@@ -87,15 +97,18 @@ runTest("Laravel Configuration", function() {
         return "Backend directory not found";
     }
     
-    chdir($backendPath);
-    
-    // Test artisan
-    $output = shell_exec("php artisan --version 2>&1");
-    if (!strpos($output, 'Laravel')) {
-        return "Laravel not working: " . $output;
+    try {
+        // Test artisan with proper PHP path
+        $output = PHPUtils::execArtisan("--version", $backendPath);
+        if (!strpos($output, 'Laravel')) {
+            return "Laravel not working: " . $output;
+        }
+        
+        return true;
+        
+    } catch (Exception $e) {
+        return "Laravel test failed: " . $e->getMessage();
     }
-    
-    return true;
 });
 
 // Test 4: Database Migrations

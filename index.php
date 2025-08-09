@@ -8,6 +8,12 @@ ini_set('display_errors', 1);
 // Check if installation is complete
 $envPath = __DIR__ . '/backend/.env';
 if (!file_exists($envPath)) {
+    // Check if this is a health check request
+    if (strpos($_SERVER['REQUEST_URI'], '/health') !== false) {
+        header('Location: /health_check.php');
+        exit;
+    }
+    
     // Redirect to installer if not installed
     header('Location: /installer/');
     exit;
@@ -17,8 +23,36 @@ if (!file_exists($envPath)) {
 $requestUri = $_SERVER['REQUEST_URI'];
 $requestPath = parse_url($requestUri, PHP_URL_PATH);
 
+// Handle special utility routes
+if ($requestPath === '/health' || $requestPath === '/health-check') {
+    header('Location: /health_check.php');
+    exit;
+}
+
+if ($requestPath === '/system-test') {
+    header('Location: /test_system.php');
+    exit;
+}
+
+if ($requestPath === '/debug') {
+    header('Location: /debug.php');
+    exit;
+}
+
 // Handle API requests
 if (strpos($requestPath, '/api/') === 0) {
+    // Check if backend is accessible
+    if (!file_exists(__DIR__ . '/backend/public/index.php')) {
+        http_response_code(503);
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'message' => 'Backend not available. Please complete installation.',
+            'redirect' => '/installer/'
+        ]);
+        exit;
+    }
+    
     // Set up environment for Laravel
     $_SERVER['SCRIPT_NAME'] = '/backend/public/index.php';
     $_SERVER['SCRIPT_FILENAME'] = __DIR__ . '/backend/public/index.php';

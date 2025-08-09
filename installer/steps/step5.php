@@ -1,6 +1,9 @@
 <?php
 // Step 5: Installation Process
 
+// Include PHP utilities
+require_once dirname(__DIR__) . '/includes/php_utils.php';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $backendPath = dirname(__DIR__) . '/backend';
@@ -59,20 +62,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         echo "<p>✅ .env file is readable</p>";
         
+        // Detect PHP CLI path
+        try {
+            $phpPath = PHPUtils::detectPHPPath();
+            echo "<p>✅ PHP CLI detected at: " . htmlspecialchars($phpPath) . "</p>";
+        } catch (Exception $e) {
+            throw new Exception("PHP CLI not available: " . $e->getMessage());
+        }
+        
         // Clear any cached config first
-        $output = shell_exec("cd {$backendPath} && php artisan config:clear 2>&1");
+        $output = PHPUtils::execArtisan("config:clear", $backendPath);
         echo "<p>Config cache cleared: " . htmlspecialchars(trim($output)) . "</p>";
         
         // Clear route cache
-        $output = shell_exec("cd {$backendPath} && php artisan route:clear 2>&1");
+        $output = PHPUtils::execArtisan("route:clear", $backendPath);
         echo "<p>Route cache cleared: " . htmlspecialchars(trim($output)) . "</p>";
         
         // Generate application key if needed
-        $output = shell_exec("cd {$backendPath} && php artisan key:generate --force 2>&1");
+        $output = PHPUtils::execArtisan("key:generate --force", $backendPath);
         echo "<p>Application key: " . htmlspecialchars(trim($output)) . "</p>";
         
         // Test if Laravel can run basic commands
-        $output = shell_exec("cd {$backendPath} && php artisan --version 2>&1");
+        $output = PHPUtils::execArtisan("--version", $backendPath);
         echo "<p>Laravel version: " . htmlspecialchars(trim($output)) . "</p>";
         
         if (strpos($output, 'Laravel Framework') === false && strpos($output, 'Laravel') === false) {
@@ -100,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // Run migrations with verbose output
-        $output = shell_exec("cd {$backendPath} && php artisan migrate --force --verbose 2>&1");
+        $output = PHPUtils::execArtisan("migrate --force --verbose", $backendPath);
         echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
         
         if (empty($output)) {
@@ -272,13 +283,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Finalize installation
         echo "<div class='log-step'>";
         echo "<h4>🎯 Finalizing installation...</h4>";
-        chdir($backendPath);
-        $output = shell_exec("php artisan config:cache 2>&1");
-        echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
         
-        $output = shell_exec("php artisan route:cache 2>&1");
-        echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
-        echo "<p class='log-success'>✅ Installation completed successfully</p>";
+        try {
+            $output = PHPUtils::execArtisan("config:cache", $backendPath);
+            echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
+            
+            $output = PHPUtils::execArtisan("route:cache", $backendPath);
+            echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
+            
+            echo "<p class='log-success'>✅ Installation completed successfully</p>";
+        } catch (Exception $e) {
+            echo "<p class='log-warning'>⚠️ Caching warning: " . htmlspecialchars($e->getMessage()) . "</p>";
+            echo "<p class='log-success'>✅ Installation completed (caching skipped)</p>";
+        }
         echo "</div>";
 
         echo "</div>";

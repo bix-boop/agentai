@@ -1,6 +1,9 @@
 <?php
 session_start();
 
+// Include PHP utilities
+require_once __DIR__ . '/includes/php_utils.php';
+
 // Installation configuration
 define('INSTALLER_VERSION', '1.0.0');
 define('MIN_PHP_VERSION', '8.1');
@@ -299,40 +302,100 @@ function runMigrations() {
         throw new Exception("Laravel artisan not found at: " . $backendPath . '/artisan');
     }
     
-    chdir($backendPath);
-    exec('php artisan migrate --force 2>&1', $output, $returnCode);
-    
-    if ($returnCode !== 0) {
-        throw new Exception('Database migration failed: ' . implode('\n', $output));
+    try {
+        $output = PHPUtils::execArtisan("migrate --force", $backendPath);
+        
+        if (strpos($output, 'Migrated:') === false && strpos($output, 'Nothing to migrate') === false) {
+            throw new Exception('Database migration failed: ' . $output);
+        }
+        
+    } catch (Exception $e) {
+        throw new Exception('Database migration failed: ' . $e->getMessage());
     }
 }
 
 function createAdminUser() {
     $config = $_SESSION['installer_config'];
     $backendPath = dirname(__DIR__) . '/backend';
-    chdir($backendPath);
     
-    $command = sprintf(
-        'php artisan tinker --execute="App\Models\User::create([\'name\' => \'%s\', \'email\' => \'%s\', \'password\' => bcrypt(\'%s\'), \'role\' => \'admin\', \'email_verified_at\' => now(), \'credits_balance\' => 100000]);"',
-        addslashes($config['admin_name']),
-        addslashes($config['admin_email']),
-        addslashes($config['admin_password'])
-    );
-    
-    exec($command . ' 2>&1', $output, $returnCode);
-    
-    if ($returnCode !== 0) {
-        throw new Exception('Admin user creation failed: ' . implode('\n', $output));
+    // Use direct database insertion instead of artisan tinker for better compatibility
+    try {
+        $pdo = new PDO(
+            "mysql:host={$config['db_host']};port={$config['db_port']};dbname={$config['db_name']}",
+            $config['db_username'],
+            $config['db_password'],
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+        
+        $hashedPassword = password_hash($config['admin_password'], PASSWORD_DEFAULT);
+        
+        $stmt = $pdo->prepare("
+            INSERT INTO users (name, email, password, role, is_active, is_verified, credits_balance, email_verified_at, created_at, updated_at)
+            VALUES (?, ?, ?, 'admin', 1, 1, 100000, NOW(), NOW(), NOW())
+            ON DUPLICATE KEY UPDATE
+            name = VALUES(name),
+            password = VALUES(password),
+            updated_at = NOW()
+        ");
+        
+        $stmt->execute([$config['admin_name'], $config['admin_email'], $hashedPassword]);
+        
+    } catch (PDOException $e) {
+        throw new Exception('Admin user creation failed: ' . $e->getMessage());
     }
 }
 
 function setupDefaultData() {
     $backendPath = dirname(__DIR__) . '/backend';
-    chdir($backendPath);
-    exec('php artisan db:seed --force 2>&1', $output, $returnCode);
     
-    if ($returnCode !== 0) {
-        throw new Exception('Default data setup failed: ' . implode('\n', $output));
+    // Use direct database operations instead of seeder for better compatibility
+    try {
+        $config = $_SESSION['installer_config'];
+        $pdo = new PDO(
+            "mysql:host={$config['db_host']};port={$config['db_port']};dbname={$config['db_name']}",
+            $config['db_username'],
+            $config['db_password'],
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+        
+        // Create default categories
+        $categories = [
+            ['Business', 'business', 'Expert business advice and consulting', '#3B82F6'],
+            ['Technology', 'technology', 'Technology support and programming help', '#10B981'],
+            ['Creative', 'creative', 'Creative writing and artistic assistance', '#F59E0B'],
+            ['Education', 'education', 'Learning support and tutoring', '#8B5CF6'],
+            ['Health', 'health', 'Health and wellness guidance', '#EF4444'],
+            ['Legal', 'legal', 'Legal advice and document assistance', '#6B7280']
+        ];
+        
+        foreach ($categories as $index => $category) {
+            $stmt = $pdo->prepare("
+                INSERT IGNORE INTO categories (name, slug, description, color, is_active, show_on_homepage, sort_order, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 1, 1, ?, NOW(), NOW())
+            ");
+            $stmt->execute([$category[0], $category[1], $category[2], $category[3], $index + 1]);
+        }
+        
+        // Create default credit packages
+        $packages = [
+            ['Starter Pack', '10,000 credits perfect for getting started', 10000, 999, 'USD', 1, false],
+            ['Professional Pack', '50,000 credits for regular users', 50000, 2999, 'USD', 2, true],
+            ['Business Pack', '150,000 credits for power users', 150000, 7999, 'USD', 3, false],
+            ['Enterprise Pack', '500,000 credits for businesses', 500000, 19999, 'USD', 4, false]
+        ];
+        
+        foreach ($packages as $index => $package) {
+            $features = json_encode(['Access to all AI assistants', 'Image generation', 'Voice features', 'Priority support']);
+            
+            $stmt = $pdo->prepare("
+                INSERT IGNORE INTO credit_packages (name, description, credits, price_cents, currency, tier, features, is_popular, is_active, sort_order, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, NOW(), NOW())
+            ");
+            $stmt->execute([$package[0], $package[1], $package[2], $package[3], $package[4], $package[5], $features, $package[6], $index + 1]);
+        }
+        
+    } catch (PDOException $e) {
+        throw new Exception('Default data setup failed: ' . $e->getMessage());
     }
 }
 
