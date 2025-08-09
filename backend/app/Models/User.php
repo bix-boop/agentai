@@ -224,4 +224,38 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $query->where('credits_balance', '>=', $minAmount);
     }
+
+    /**
+     * Check if account is locked due to failed login attempts
+     */
+    public function isLocked(): bool
+    {
+        return $this->locked_until && $this->locked_until > now();
+    }
+
+    /**
+     * Increment failed login attempts
+     */
+    public function incrementFailedLogins(): void
+    {
+        $this->increment('failed_login_attempts');
+
+        // Lock account after 5 failed attempts
+        if ($this->failed_login_attempts >= 5) {
+            $this->update([
+                'locked_until' => now()->addMinutes(30)
+            ]);
+        }
+    }
+
+    /**
+     * Reset failed login attempts
+     */
+    public function resetFailedLogins(): void
+    {
+        $this->update([
+            'failed_login_attempts' => 0,
+            'locked_until' => null,
+        ]);
+    }
 }
