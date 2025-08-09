@@ -39,6 +39,11 @@ if ($requestPath === '/debug') {
     exit;
 }
 
+if ($requestPath === '/setup-vendor') {
+    header('Location: /setup_vendor.php');
+    exit;
+}
+
 // Handle API requests
 if (strpos($requestPath, '/api/') === 0) {
     // Check if backend is accessible

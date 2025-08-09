@@ -201,6 +201,31 @@ VITE_PUSHER_APP_CLUSTER=\"\${PUSHER_APP_CLUSTER}\"
             
             chdir($this->backendPath);
             
+            // Check if vendor directory exists
+            if (!is_dir($this->backendPath . '/vendor')) {
+                $this->log("📦 Installing Laravel dependencies...");
+                
+                // Check if Composer is available
+                $composerPath = PHPUtils::checkComposer();
+                if ($composerPath) {
+                    $this->log("✅ Composer found at: " . $composerPath);
+                    
+                    // Install dependencies
+                    $output = $this->runCommand("$composerPath install --no-dev --optimize-autoloader --no-interaction", "Composer install");
+                    $this->log("Composer output: " . substr($output, 0, 500) . (strlen($output) > 500 ? '...' : ''));
+                    
+                    if (!is_dir($this->backendPath . '/vendor')) {
+                        throw new Exception("Composer install failed - vendor directory still missing");
+                    }
+                    
+                    $this->log("✅ Laravel dependencies installed");
+                } else {
+                    throw new Exception("Composer not found and vendor directory missing. Please visit /setup_vendor.php to install dependencies or upload the vendor directory manually.");
+                }
+            } else {
+                $this->log("✅ Laravel dependencies already installed");
+            }
+            
             // Clear all caches
             $this->runArtisanCommand("config:clear", "Config cache cleared");
             $this->runArtisanCommand("route:clear", "Route cache cleared");
