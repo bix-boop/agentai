@@ -9,8 +9,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "<div class='installation-log'>";
         echo "<h3>Installation Progress</h3>";
         
+        // Show debug info
+        echo "<div class='log-step'>";
+        echo "<h4>🔍 Debug Information</h4>";
+        echo "<p><strong>Backend Path:</strong> " . htmlspecialchars($backendPath) . "</p>";
+        echo "<p><strong>Frontend Path:</strong> " . htmlspecialchars($frontendPath) . "</p>";
+        echo "<p><strong>Backend Exists:</strong> " . (is_dir($backendPath) ? "✅ Yes" : "❌ No") . "</p>";
+        echo "<p><strong>Artisan Exists:</strong> " . (file_exists($backendPath . '/artisan') ? "✅ Yes" : "❌ No") . "</p>";
+        echo "<p><strong>.env Exists:</strong> " . (file_exists($backendPath . '/.env') ? "✅ Yes" : "❌ No") . "</p>";
+        echo "</div>";
+        
         // Get configuration from session
         $config = $_SESSION['installer_config'] ?? [];
+        
+        if (empty($config)) {
+            throw new Exception("Installation configuration not found. Please restart the installation process.");
+        }
         
         // Install PHP dependencies if Composer is available
         echo "<div class='log-step'>";
@@ -28,15 +42,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         echo "</div>";
 
+        // Setup Laravel environment first
+        echo "<div class='log-step'>";
+        echo "<h4>⚙️ Setting up Laravel environment...</h4>";
+        
+        // Check .env file
+        $envPath = $backendPath . '/.env';
+        if (!file_exists($envPath)) {
+            throw new Exception(".env file not found at: " . $envPath);
+        }
+        echo "<p>✅ .env file found</p>";
+        
+        // Check if .env is readable
+        if (!is_readable($envPath)) {
+            throw new Exception(".env file is not readable. Check file permissions.");
+        }
+        echo "<p>✅ .env file is readable</p>";
+        
+        // Clear any cached config first
+        $output = shell_exec("cd {$backendPath} && php artisan config:clear 2>&1");
+        echo "<p>Config cache cleared: " . htmlspecialchars(trim($output)) . "</p>";
+        
+        // Clear route cache
+        $output = shell_exec("cd {$backendPath} && php artisan route:clear 2>&1");
+        echo "<p>Route cache cleared: " . htmlspecialchars(trim($output)) . "</p>";
+        
+        // Generate application key if needed
+        $output = shell_exec("cd {$backendPath} && php artisan key:generate --force 2>&1");
+        echo "<p>Application key: " . htmlspecialchars(trim($output)) . "</p>";
+        
+        // Test if Laravel can run basic commands
+        $output = shell_exec("cd {$backendPath} && php artisan --version 2>&1");
+        echo "<p>Laravel version: " . htmlspecialchars(trim($output)) . "</p>";
+        
+        if (strpos($output, 'Laravel Framework') === false && strpos($output, 'Laravel') === false) {
+            throw new Exception("Laravel is not working properly. Output: " . $output);
+        }
+        
+        echo "<p class='log-success'>✅ Laravel environment ready</p>";
+        echo "</div>";
+
         // Run database migrations
         echo "<div class='log-step'>";
         echo "<h4>🔄 Running database migrations...</h4>";
-        $output = shell_exec("cd {$backendPath} && php artisan migrate --force 2>&1");
+        
+        // First check if we can connect to database
+        try {
+            $pdo = new PDO(
+                "mysql:host={$config['db_host']};port={$config['db_port']};dbname={$config['db_name']}",
+                $config['db_username'],
+                $config['db_password'],
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+            echo "<p>✅ Database connection verified</p>";
+        } catch (PDOException $e) {
+            throw new Exception("Database connection failed: " . $e->getMessage());
+        }
+        
+        // Run migrations with verbose output
+        $output = shell_exec("cd {$backendPath} && php artisan migrate --force --verbose 2>&1");
         echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
-        if (strpos($output, 'Migration table created successfully') !== false || strpos($output, 'Migrated:') !== false) {
+        
+        if (empty($output)) {
+            throw new Exception("Migration command produced no output. Check if artisan command is working.");
+        }
+        
+        if (strpos($output, 'Migration table created successfully') !== false || 
+            strpos($output, 'Migrated:') !== false || 
+            strpos($output, 'Nothing to migrate') !== false) {
             echo "<p class='log-success'>✅ Database migrations completed</p>";
         } else {
-            throw new Exception("Database migration failed: " . $output);
+            throw new Exception("Database migration failed. Output: " . $output);
         }
         echo "</div>";
 
