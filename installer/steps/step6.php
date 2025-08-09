@@ -81,6 +81,19 @@ unset($_SESSION['installation_complete']);
             </ul>
         </div>
 
+        <?php if (empty($config['openai_api_key'])): ?>
+        <div class="alert alert-warning">
+            <strong>🤖 OpenAI API Key Required for AI Features:</strong>
+            <p>You can add your OpenAI API key later to enable AI functionality:</p>
+            <ul style="margin-top: 10px; list-style: disc; margin-left: 20px;">
+                <li>Go to Admin Dashboard → Settings</li>
+                <li>Add your OpenAI API key (supports both sk-... and sk-proj-... formats)</li>
+                <li>Test the connection to ensure it works</li>
+                <li>AI features will be enabled immediately</li>
+            </ul>
+        </div>
+        <?php endif; ?>
+
         <div class="alert alert-info">
             <strong>📚 Resources & Support:</strong>
             <ul style="margin-top: 10px; list-style: disc; margin-left: 20px;">
