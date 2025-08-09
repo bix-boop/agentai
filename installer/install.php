@@ -226,18 +226,17 @@ VITE_PUSHER_APP_CLUSTER=\"\${PUSHER_APP_CLUSTER}\"
                 $this->log("✅ Laravel dependencies already installed");
             }
             
-            // Clear all caches
+            // Clear config and route caches (safe to do before migrations)
             $this->runArtisanCommand("config:clear", "Config cache cleared");
             $this->runArtisanCommand("route:clear", "Route cache cleared");
             $this->runArtisanCommand("view:clear", "View cache cleared");
-            $this->runArtisanCommand("cache:clear", "Application cache cleared");
             
             // Generate application key
             $this->runArtisanCommand("key:generate --force", "Application key generated");
             
             // Test Laravel
             $output = $this->runArtisanCommand("--version", "Laravel version check", false);
-            if (!strpos($output, 'Laravel')) {
+            if (strpos($output, 'Laravel Framework') === false && strpos($output, 'Laravel') === false) {
                 throw new Exception("Laravel not working properly. Output: " . $output);
             }
             
@@ -266,6 +265,15 @@ VITE_PUSHER_APP_CLUSTER=\"\${PUSHER_APP_CLUSTER}\"
             }
             
             $this->log("✅ Database migrations completed");
+            
+            // Now safe to clear application cache (after database tables exist)
+            try {
+                $this->runArtisanCommand("cache:clear", "Application cache cleared", false);
+                $this->log("✅ Application cache cleared");
+            } catch (Exception $e) {
+                $this->log("⚠️ Cache clear warning: " . $e->getMessage());
+                // Don't fail installation for cache issues
+            }
             
         } catch (Exception $e) {
             throw new Exception("Migration failed: " . $e->getMessage());

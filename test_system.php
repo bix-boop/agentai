@@ -100,7 +100,7 @@ runTest("Laravel Configuration", function() {
     try {
         // Test artisan with proper PHP path
         $output = PHPUtils::execArtisan("--version", $backendPath);
-        if (!strpos($output, 'Laravel')) {
+        if (strpos($output, 'Laravel Framework') === false && strpos($output, 'Laravel') === false) {
             return "Laravel not working: " . $output;
         }
         
