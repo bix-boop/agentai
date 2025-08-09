@@ -20,6 +20,7 @@ class CategorySeeder extends Seeder
                 'icon' => 'briefcase',
                 'color' => '#3B82F6',
                 'is_active' => true,
+                'show_on_homepage' => true,
                 'sort_order' => 1,
             ],
             [
@@ -29,6 +30,7 @@ class CategorySeeder extends Seeder
                 'icon' => 'paint-brush',
                 'color' => '#8B5CF6',
                 'is_active' => true,
+                'show_on_homepage' => true,
                 'sort_order' => 2,
             ],
             [
@@ -38,6 +40,7 @@ class CategorySeeder extends Seeder
                 'icon' => 'academic-cap',
                 'color' => '#10B981',
                 'is_active' => true,
+                'show_on_homepage' => true,
                 'sort_order' => 3,
             ],
             [
@@ -47,6 +50,7 @@ class CategorySeeder extends Seeder
                 'icon' => 'code-bracket',
                 'color' => '#F59E0B',
                 'is_active' => true,
+                'show_on_homepage' => true,
                 'sort_order' => 4,
             ],
             [
@@ -56,6 +60,7 @@ class CategorySeeder extends Seeder
                 'icon' => 'heart',
                 'color' => '#EF4444',
                 'is_active' => true,
+                'show_on_homepage' => true,
                 'sort_order' => 5,
             ],
             [
@@ -65,6 +70,7 @@ class CategorySeeder extends Seeder
                 'icon' => 'currency-dollar',
                 'color' => '#059669',
                 'is_active' => true,
+                'show_on_homepage' => true,
                 'sort_order' => 6,
             ],
             [
@@ -74,6 +80,7 @@ class CategorySeeder extends Seeder
                 'icon' => 'chat-bubble-left-right',
                 'color' => '#DC2626',
                 'is_active' => true,
+                'show_on_homepage' => true,
                 'sort_order' => 7,
             ],
             [
@@ -83,6 +90,7 @@ class CategorySeeder extends Seeder
                 'icon' => 'puzzle-piece',
                 'color' => '#7C3AED',
                 'is_active' => true,
+                'show_on_homepage' => true,
                 'sort_order' => 8,
             ],
         ];
