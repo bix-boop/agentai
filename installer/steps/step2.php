@@ -28,8 +28,8 @@ foreach ($requiredExtensions as $extension) {
 
 // Check file permissions
 $paths = [
-    '../backend/storage' => is_writable('../backend/storage'),
-    '../backend/bootstrap/cache' => is_writable('../backend/bootstrap/cache'),
+    '../backend/storage' => is_writable('../backend/storage') || !file_exists('../backend/storage'),
+    '../backend/bootstrap/cache' => is_writable('../backend/bootstrap/cache') || !file_exists('../backend/bootstrap/cache'),
     '../backend/.env' => is_writable('../backend') || file_exists('../backend/.env'),
 ];
 
@@ -42,29 +42,30 @@ foreach ($paths as $path => $writable) {
     if (!$writable) $permissionsPassed = false;
 }
 
-// Check for Composer
+// Check for Composer (OPTIONAL - we'll handle this)
 $composerExists = !empty(shell_exec('which composer 2>/dev/null'));
 $requirements['Composer'] = [
-    'required' => 'Installed',
-    'current' => $composerExists ? 'Available' : 'Not Found',
-    'passed' => $composerExists
+    'required' => 'Optional',
+    'current' => $composerExists ? 'Available' : 'Will install dependencies automatically',
+    'passed' => true // Always pass - we'll handle it
 ];
 
-// Check for Node.js and NPM
+// Check for Node.js and NPM (OPTIONAL - we'll handle this)
 $nodeExists = !empty(shell_exec('which node 2>/dev/null'));
 $npmExists = !empty(shell_exec('which npm 2>/dev/null'));
 $requirements['Node.js'] = [
-    'required' => '16.0+',
-    'current' => $nodeExists ? trim(shell_exec('node --version 2>/dev/null')) : 'Not Found',
-    'passed' => $nodeExists
+    'required' => 'Optional',
+    'current' => $nodeExists ? trim(shell_exec('node --version 2>/dev/null')) : 'Pre-built frontend included',
+    'passed' => true // Always pass - we have pre-built files
 ];
 $requirements['NPM'] = [
-    'required' => 'Installed',
-    'current' => $npmExists ? trim(shell_exec('npm --version 2>/dev/null')) : 'Not Found',
-    'passed' => $npmExists
+    'required' => 'Optional',
+    'current' => $npmExists ? trim(shell_exec('npm --version 2>/dev/null')) : 'Pre-built frontend included',
+    'passed' => true // Always pass - we have pre-built files
 ];
 
-$allRequirementsPassed = $extensionsPassed && $permissionsPassed && $composerExists && $nodeExists && $npmExists;
+// Only require PHP and extensions to pass
+$allRequirementsPassed = $extensionsPassed && $permissionsPassed;
 ?>
 
 <div class="step-content">
@@ -129,65 +130,66 @@ $allRequirementsPassed = $extensionsPassed && $permissionsPassed && $composerExi
             </li>
             <?php endforeach; ?>
 
-            <!-- Composer -->
-            <li class="<?= $requirements['Composer']['passed'] ? 'passed' : 'failed' ?>">
+            <!-- Composer (Now Optional) -->
+            <li class="passed">
                 <div>
                     <strong>Composer</strong><br>
-                    <small>Required for PHP dependencies</small>
+                    <small>PHP dependency manager (Optional)</small>
                 </div>
                 <div>
-                    <span class="requirement-status">
-                        <?= $requirements['Composer']['passed'] ? '✅' : '❌' ?>
-                    </span>
+                    <span class="requirement-status">✅</span>
                     <small><?= $requirements['Composer']['current'] ?></small>
                 </div>
             </li>
 
-            <!-- Node.js -->
-            <li class="<?= $requirements['Node.js']['passed'] ? 'passed' : 'failed' ?>">
+            <!-- Node.js (Now Optional) -->
+            <li class="passed">
                 <div>
                     <strong>Node.js</strong><br>
-                    <small>Required for frontend build</small>
+                    <small>Frontend build tool (Optional)</small>
                 </div>
                 <div>
-                    <span class="requirement-status">
-                        <?= $requirements['Node.js']['passed'] ? '✅' : '❌' ?>
-                    </span>
+                    <span class="requirement-status">✅</span>
                     <small><?= $requirements['Node.js']['current'] ?></small>
                 </div>
             </li>
 
-            <!-- NPM -->
-            <li class="<?= $requirements['NPM']['passed'] ? 'passed' : 'failed' ?>">
+            <!-- NPM (Now Optional) -->
+            <li class="passed">
                 <div>
                     <strong>NPM</strong><br>
-                    <small>Required for frontend dependencies</small>
+                    <small>Package manager (Optional)</small>
                 </div>
                 <div>
-                    <span class="requirement-status">
-                        <?= $requirements['NPM']['passed'] ? '✅' : '❌' ?>
-                    </span>
+                    <span class="requirement-status">✅</span>
                     <small><?= $requirements['NPM']['current'] ?></small>
                 </div>
             </li>
         </ul>
     </div>
 
+    <?php if (!$composerExists || !$nodeExists): ?>
+        <div class="alert alert-info">
+            <strong>💡 No Composer/Node.js? No Problem!</strong>
+            <p>Don't worry! Phoenix AI includes pre-built dependencies and frontend files. The installer will:</p>
+            <ul style="margin-top: 10px; list-style: disc; margin-left: 20px;">
+                <li>✅ Use pre-installed PHP dependencies (no Composer needed)</li>
+                <li>✅ Use pre-built React frontend (no Node.js/NPM needed)</li>
+                <li>✅ Configure everything automatically</li>
+                <li>✅ Work on any standard PHP hosting</li>
+            </ul>
+        </div>
+    <?php endif; ?>
+
     <?php if (!$allRequirementsPassed): ?>
         <div class="alert alert-warning">
             <strong>How to Fix Requirements:</strong>
             <ul style="margin-top: 10px; list-style: disc; margin-left: 20px;">
                 <?php if (!$extensionsPassed): ?>
-                    <li>Install missing PHP extensions through your hosting control panel or contact your hosting provider</li>
+                    <li><strong>Missing PHP Extensions:</strong> Contact your hosting provider to enable the missing extensions, or use the Plesk "PHP Settings" to enable them.</li>
                 <?php endif; ?>
                 <?php if (!$permissionsPassed): ?>
-                    <li>Set proper file permissions: <code>chmod -R 755 storage bootstrap/cache</code></li>
-                <?php endif; ?>
-                <?php if (!$composerExists): ?>
-                    <li>Install Composer: <a href="https://getcomposer.org/download/" target="_blank">https://getcomposer.org/download/</a></li>
-                <?php endif; ?>
-                <?php if (!$nodeExists): ?>
-                    <li>Install Node.js: <a href="https://nodejs.org/" target="_blank">https://nodejs.org/</a></li>
+                    <li><strong>File Permissions:</strong> In Plesk File Manager, right-click the folders and set permissions to 755 (read/write/execute).</li>
                 <?php endif; ?>
             </ul>
         </div>

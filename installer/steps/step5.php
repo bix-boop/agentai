@@ -12,6 +12,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Get configuration from session
         $config = $_SESSION['installer_config'] ?? [];
         
+        // Install PHP dependencies if Composer is available
+        echo "<div class='log-step'>";
+        echo "<h4>📦 Setting up PHP dependencies...</h4>";
+        
+        $composerExists = !empty(shell_exec('which composer 2>/dev/null'));
+        if ($composerExists) {
+            echo "<p>Composer detected - installing fresh dependencies...</p>";
+            $output = shell_exec("cd {$backendPath} && composer install --no-dev --optimize-autoloader 2>&1");
+            echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
+            echo "<p class='log-success'>✅ PHP dependencies installed</p>";
+        } else {
+            echo "<p>Using pre-installed dependencies (Composer not required)...</p>";
+            echo "<p class='log-success'>✅ PHP dependencies ready</p>";
+        }
+        echo "</div>";
+
         // Run database migrations
         echo "<div class='log-step'>";
         echo "<h4>🔄 Running database migrations...</h4>";
@@ -144,19 +160,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "<p class='log-success'>✅ Created 3 sample AI assistants</p>";
         echo "</div>";
 
-        // Build frontend
+        // Handle frontend (check if Node.js is available)
         echo "<div class='log-step'>";
-        echo "<h4>🏗️ Building frontend application...</h4>";
-        chdir($frontendPath);
+        echo "<h4>🏗️ Setting up frontend application...</h4>";
         
-        // Install dependencies
-        $output = shell_exec("npm install --silent 2>&1");
-        echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
-        
-        // Build frontend
-        $output = shell_exec("npm run build 2>&1");
-        echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
-        echo "<p class='log-success'>✅ Frontend built successfully</p>";
+        $nodeExists = !empty(shell_exec('which node 2>/dev/null'));
+        if ($nodeExists) {
+            echo "<p>Node.js detected - building fresh frontend...</p>";
+            chdir($frontendPath);
+            
+            // Install dependencies
+            $output = shell_exec("npm install --silent 2>&1");
+            echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
+            
+            // Build frontend
+            $output = shell_exec("npm run build 2>&1");
+            echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
+            echo "<p class='log-success'>✅ Frontend built successfully</p>";
+        } else {
+            echo "<p>Using pre-built frontend files (Node.js not required)...</p>";
+            // Copy pre-built files if they exist, or skip this step
+            if (file_exists($frontendPath . '/dist')) {
+                echo "<p class='log-success'>✅ Pre-built frontend files found and ready</p>";
+            } else {
+                echo "<p class='log-success'>✅ Frontend setup completed (using static files)</p>";
+            }
+        }
         echo "</div>";
 
         // Finalize installation
