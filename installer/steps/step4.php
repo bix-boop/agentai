@@ -16,8 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'openai_api_key' => $_POST['openai_api_key'] ?? '',
         ];
         
-        // Validate required fields
-        $required = ['site_name', 'site_url', 'admin_name', 'admin_email', 'admin_password', 'openai_api_key'];
+        // Validate required fields (OpenAI API key is now optional)
+        $required = ['site_name', 'site_url', 'admin_name', 'admin_email', 'admin_password'];
         foreach ($required as $field) {
             if (empty($config[$field])) {
                 throw new Exception(ucfirst(str_replace('_', ' ', $field)) . " is required");
@@ -34,9 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Admin password must be at least 8 characters long");
         }
         
-        // Validate OpenAI API key format
-        if (!preg_match('/^sk-[a-zA-Z0-9]{48}$/', $config['openai_api_key'])) {
-            throw new Exception("Invalid OpenAI API key format. Should start with 'sk-' followed by 48 characters");
+        // Validate OpenAI API key format (support both old and new formats)
+        if (!empty($config['openai_api_key']) && !preg_match('/^sk-[a-zA-Z0-9_-]{20,}$/', $config['openai_api_key'])) {
+            throw new Exception("Invalid OpenAI API key format. Should start with 'sk-' followed by alphanumeric characters");
         }
         
         // Store config in session
@@ -156,26 +156,26 @@ $detectedUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https'
         <h3>🤖 AI Configuration</h3>
         
         <div class="form-group">
-            <label for="openai_api_key">OpenAI API Key</label>
+            <label for="openai_api_key">OpenAI API Key (Optional)</label>
             <input 
                 type="password" 
                 id="openai_api_key" 
                 name="openai_api_key" 
                 value="<?= htmlspecialchars($saved['openai_api_key'] ?? '') ?>" 
-                required
-                pattern="sk-[a-zA-Z0-9]{48}"
-                data-tooltip="Your OpenAI API key starting with 'sk-'"
+                placeholder="sk-proj-... or sk-..."
+                data-tooltip="Your OpenAI API key starting with 'sk-' (can be added later in admin panel)"
             >
-            <small>Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a></small>
+            <small>Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a> or add it later in the admin panel</small>
         </div>
 
         <div class="alert alert-info">
-            <strong>OpenAI API Key Requirements:</strong>
+            <strong>💡 OpenAI API Key Options:</strong>
             <ul style="margin-top: 10px; list-style: disc; margin-left: 20px;">
+                <li><strong>Add Now:</strong> Platform will be ready to use immediately</li>
+                <li><strong>Add Later:</strong> Skip for now and add via Admin Panel → Settings</li>
+                <li>Supports both old format (sk-...) and new format (sk-proj-...)</li>
                 <li>Must have access to GPT-3.5-turbo or GPT-4</li>
                 <li>Should have DALL-E access for image generation</li>
-                <li>Make sure you have sufficient credit balance</li>
-                <li>API key should start with 'sk-' followed by 48 characters</li>
             </ul>
         </div>
 
