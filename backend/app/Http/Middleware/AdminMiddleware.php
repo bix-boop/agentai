@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class AdminMiddleware
@@ -15,19 +16,19 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->user()) {
+        // Check if user is authenticated
+        if (!Auth::check()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Authentication required',
-                'error_code' => 'unauthenticated'
             ], 401);
         }
 
-        if (!$request->user()->isAdmin()) {
+        // Check if user is admin
+        if (!Auth::user()->isAdmin()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Admin access required',
-                'error_code' => 'insufficient_permissions'
             ], 403);
         }
 

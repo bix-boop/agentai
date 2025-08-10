@@ -92,37 +92,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return in_array($this->role, ['admin', 'moderator']);
     }
 
-    /**
-     * Check if user has enough credits
-     */
-    public function hasCredits(int $amount = 1): bool
-    {
-        return $this->credits_balance >= $amount;
-    }
 
-    /**
-     * Deduct credits from user balance
-     */
-    public function deductCredits(int $amount): bool
-    {
-        if (!$this->hasCredits($amount)) {
-            return false;
-        }
 
-        $this->increment('total_credits_used', $amount);
-        $this->decrement('credits_balance', $amount);
-        
-        return true;
-    }
 
-    /**
-     * Add credits to user balance
-     */
-    public function addCredits(int $amount): void
-    {
-        $this->increment('credits_balance', $amount);
-        $this->increment('total_credits_purchased', $amount);
-    }
+
+
 
     /**
      * Get user's AI assistants
@@ -256,6 +230,95 @@ class User extends Authenticatable implements MustVerifyEmail
         $this->update([
             'failed_login_attempts' => 0,
             'locked_until' => null,
+        ]);
+    }
+
+    /**
+     * Add credits to user balance
+     */
+    public function addCredits(int $credits, string $reason = 'Manual adjustment'): void
+    {
+        $this->increment('credits_balance', $credits);
+        $this->increment('total_credits_purchased', $credits);
+        
+        // Record analytics
+        Analytics::record('credits_purchased', $credits, (string)$this->id);
+        
+        // Log the transaction
+        \Log::info('Credits added to user', [
+            'user_id' => $this->id,
+            'credits' => $credits,
+            'reason' => $reason,
+            'new_balance' => $this->fresh()->credits_balance,
+        ]);
+    }
+
+    /**
+     * Deduct credits from user balance
+     */
+    public function deductCredits(int $credits): void
+    {
+        if ($this->credits_balance < $credits) {
+            throw new \Exception('Insufficient credits');
+        }
+        
+        $this->decrement('credits_balance', $credits);
+        $this->increment('total_credits_used', $credits);
+        
+        // Record analytics
+        Analytics::record('credits_consumed', $credits, (string)$this->id);
+    }
+
+    /**
+     * Check if user has enough credits
+     */
+    public function hasCredits(int $required): bool
+    {
+        return $this->credits_balance >= $required;
+    }
+
+    /**
+     * Get user's favorite AI assistants
+     */
+    public function favoriteAiAssistants()
+    {
+        return $this->belongsToMany(AIAssistant::class, 'user_favorites')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Get user's active chats
+     */
+    public function activeChats()
+    {
+        return $this->chats()->where('is_archived', false);
+    }
+
+    /**
+     * Get user's ratings
+     */
+    public function aiRatings()
+    {
+        return $this->hasMany(AIRating::class);
+    }
+
+    /**
+     * Check if user is VIP (has premium tier)
+     */
+    public function isVip(): bool
+    {
+        return $this->current_tier > 1 && 
+               ($this->tier_expires_at === null || $this->tier_expires_at->isFuture());
+    }
+
+    /**
+     * Upgrade user tier
+     */
+    public function upgradeTier(int $tier, ?\Carbon\Carbon $expiresAt = null): void
+    {
+        $this->update([
+            'current_tier' => max($this->current_tier, $tier),
+            'tier_expires_at' => $expiresAt,
         ]);
     }
 }

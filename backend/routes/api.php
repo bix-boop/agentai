@@ -62,9 +62,19 @@ Route::prefix('v1')->group(function () {
         Route::get('/{category:slug}/ai-assistants', [CategoryController::class, 'aiAssistants']);
     });
 
+    // Public Credit packages (for browsing)
+    Route::prefix('credit-packages')->group(function () {
+        Route::get('/', [PaymentController::class, 'packages']);
+        Route::get('/{creditPackage}', [PaymentController::class, 'showPackage']);
+    });
+
     // System information
     Route::get('system/health', function () {
         return response()->json(['status' => 'ok', 'timestamp' => now()]);
+    });
+
+    Route::get('system/status', function () {
+        return response()->json(['status' => 'ok', 'timestamp' => now(), 'service' => 'Phoenix AI']);
     });
 
     Route::get('system/version', function () {
@@ -123,10 +133,8 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
         Route::delete('/{chat}', [ChatController::class, 'destroy']);
     });
 
-    // Credit packages and payments
+    // Credit package purchasing (requires auth)
     Route::prefix('credit-packages')->group(function () {
-        Route::get('/', [PaymentController::class, 'packages']);
-        Route::get('/{creditPackage}', [PaymentController::class, 'showPackage']);
         Route::post('/{creditPackage}/purchase', [PaymentController::class, 'purchasePackage']);
     });
 
@@ -141,7 +149,7 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
         Route::post('paypal/capture-order', [PaymentController::class, 'capturePayPalOrder']);
         
         // Bank deposit
-        Route::post('bank-deposit', [PaymentController::class, 'bankDeposit']);
+        Route::post('bank-deposit', [PaymentController::class, 'createBankDeposit']);
         
         // Payment history
         Route::get('history', [PaymentController::class, 'paymentHistory']);

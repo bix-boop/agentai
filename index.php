@@ -54,6 +54,11 @@ if ($requestPath === '/final-optimization') {
     exit;
 }
 
+if ($requestPath === '/test-complete-platform') {
+    header('Location: /test_complete_platform.php');
+    exit;
+}
+
 // Handle API requests
 if (strpos($requestPath, '/api/') === 0) {
     // Check if backend is accessible

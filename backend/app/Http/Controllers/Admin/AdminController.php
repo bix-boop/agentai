@@ -8,9 +8,12 @@ use App\Models\AIAssistant;
 use App\Models\Category;
 use App\Models\CreditPackage;
 use App\Models\Transaction;
+use App\Models\Analytics;
 use App\Models\Chat;
 use App\Models\Message;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -208,13 +211,15 @@ class AdminController extends Controller
             // Create transaction record
             Transaction::create([
                 'user_id' => $user->id,
+                'transaction_id' => 'admin_' . uniqid(),
                 'type' => 'admin_adjustment',
-                'amount_cents' => 0,
+                'payment_method' => 'admin',
+                'credits_amount' => $request->amount,
+                'price_cents' => 0,
                 'currency' => 'USD',
-                'credits' => $request->amount,
                 'status' => 'completed',
-                'description' => $request->reason,
-                'payment_data' => [
+                'notes' => $request->reason,
+                'gateway_response' => [
                     'old_balance' => $oldBalance,
                     'new_balance' => $user->fresh()->credits_balance,
                     'admin_action' => $request->type,
@@ -361,7 +366,62 @@ class AdminController extends Controller
     
     public function transactions() { return $this->placeholder('Transactions management'); }
     public function showTransaction() { return $this->placeholder('Show Transaction'); }
-    public function approveTransaction() { return $this->placeholder('Approve Transaction'); }
+    public function approveTransaction(Request $request, Transaction $transaction): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'verification_notes' => 'nullable|string|max:500',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            if ($transaction->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Transaction is not pending approval'
+                ], 400);
+            }
+
+            // Update transaction status
+            $transaction->update([
+                'status' => 'completed',
+                'verified_by' => Auth::id(),
+                'bank_verified_at' => now(),
+                'notes' => $request->verification_notes ?? 'Approved by admin',
+                'processed_at' => now(),
+            ]);
+
+            // Add credits to user
+            $user = $transaction->user;
+            $user->increment('credits_balance', $transaction->credits_amount);
+
+            // Record analytics
+            Analytics::record('bank_deposits_approved');
+            Analytics::record('credits_purchased', $transaction->credits_amount);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Transaction approved successfully',
+                'data' => [
+                    'transaction' => $transaction->fresh(),
+                    'user_new_balance' => $user->fresh()->credits_balance
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to approve transaction',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
     public function rejectTransaction() { return $this->placeholder('Reject Transaction'); }
     public function refundTransaction() { return $this->placeholder('Refund Transaction'); }
     

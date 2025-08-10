@@ -129,7 +129,12 @@ const Dashboard: React.FC = () => {
               <SparklesIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">AI Assistants</h3>
               <p className="text-gray-500 mb-6">Browse and chat with specialized AI assistants.</p>
-              <p className="text-sm text-gray-400">AI assistant gallery coming soon...</p>
+              <button
+                onClick={() => window.location.href = '/ai-assistants'}
+                className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium"
+              >
+                Browse AI Assistant Gallery
+              </button>
             </div>
           )}
 

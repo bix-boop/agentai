@@ -5,285 +5,524 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\CreditPackage;
 use App\Models\Transaction;
-use App\Models\User;
+use App\Services\PaymentService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class PaymentController extends Controller
 {
-    public function __construct()
+    private PaymentService $paymentService;
+
+    public function __construct(PaymentService $paymentService)
     {
         $this->middleware('auth:sanctum')->except(['packages', 'showPackage']);
+        $this->paymentService = $paymentService;
     }
 
-    public function packages()
+    /**
+     * Get all credit packages (public endpoint)
+     */
+    public function packages(): JsonResponse
     {
         try {
-            $packages = CreditPackage::where('is_active', true)
+            $packages = \App\Models\CreditPackage::where('is_active', true)
                 ->orderBy('sort_order')
-                ->orderBy('price_cents')
                 ->get();
 
             return response()->json([
                 'success' => true,
                 'data' => $packages
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch credit packages',
+                'message' => 'Failed to retrieve credit packages',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    public function showPackage(CreditPackage $creditPackage)
+    /**
+     * Get specific credit package (public endpoint)
+     */
+    public function showPackage(\App\Models\CreditPackage $creditPackage): JsonResponse
     {
         try {
-            if (!$creditPackage->is_active) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Package not available'
-                ], 404);
-            }
-
             return response()->json([
                 'success' => true,
                 'data' => $creditPackage
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch package',
+                'message' => 'Failed to retrieve credit package',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    public function purchasePackage(Request $request, CreditPackage $creditPackage)
+    /**
+     * Purchase a credit package (redirects to appropriate payment method)
+     */
+    public function purchasePackage(Request $request, \App\Models\CreditPackage $creditPackage): JsonResponse
     {
+        $validator = Validator::make($request->all(), [
+            'payment_method' => 'required|in:stripe,paypal,bank_deposit',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
         try {
-            $validator = Validator::make($request->all(), [
-                'payment_method' => 'required|string|in:stripe,paypal,bank_deposit',
-                'payment_data' => 'required|array',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            if (!$creditPackage->is_active) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Package not available'
-                ], 400);
-            }
-
-            $user = Auth::user();
-
-            // Create transaction record
-            $transaction = Transaction::create([
-                'user_id' => $user->id,
-                'credit_package_id' => $creditPackage->id,
-                'type' => 'purchase',
-                'amount_cents' => $creditPackage->price_cents,
-                'currency' => $creditPackage->currency,
-                'credits' => $creditPackage->credits,
-                'payment_method' => $request->payment_method,
-                'payment_data' => $request->payment_data,
-                'status' => 'pending',
-                'description' => "Purchase of {$creditPackage->name}",
-            ]);
-
-            // For now, just mark as completed (implement actual payment processing later)
-            $transaction->update(['status' => 'completed']);
+            $paymentMethod = $request->input('payment_method');
             
-            // Add credits to user
-            $user->increment('credits_balance', $creditPackage->credits);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Purchase completed successfully',
-                'data' => [
-                    'transaction' => $transaction,
-                    'new_balance' => $user->fresh()->credits_balance
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Purchase failed',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function createStripeIntent(Request $request)
-    {
-        try {
-            // Placeholder for Stripe integration
-            return response()->json([
-                'success' => true,
-                'message' => 'Stripe integration not yet implemented',
-                'data' => ['client_secret' => 'placeholder']
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Stripe payment failed',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function confirmStripePayment(Request $request)
-    {
-        try {
-            // Placeholder for Stripe confirmation
-            return response()->json([
-                'success' => true,
-                'message' => 'Stripe confirmation not yet implemented'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Stripe confirmation failed',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function createPayPalOrder(Request $request)
-    {
-        try {
-            // Placeholder for PayPal integration
-            return response()->json([
-                'success' => true,
-                'message' => 'PayPal integration not yet implemented',
-                'data' => ['order_id' => 'placeholder']
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'PayPal order creation failed',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function capturePayPalOrder(Request $request)
-    {
-        try {
-            // Placeholder for PayPal capture
-            return response()->json([
-                'success' => true,
-                'message' => 'PayPal capture not yet implemented'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'PayPal capture failed',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function bankDeposit(Request $request)
-    {
-        try {
-            $validator = Validator::make($request->all(), [
-                'credit_package_id' => 'required|exists:credit_packages,id',
-                'bank_reference' => 'required|string|max:255',
-                'amount' => 'required|numeric|min:0',
-                'notes' => 'nullable|string|max:1000',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
+            switch ($paymentMethod) {
+                case 'stripe':
+                    return $this->createStripeIntent($request);
+                case 'paypal':
+                    return $this->createPayPalOrder($request);
+                case 'bank_deposit':
+                    return $this->createBankDeposit($request);
+                default:
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid payment method'
+                    ], 400);
             }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to initiate purchase',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
+    /**
+     * Create Stripe payment intent
+     */
+    public function createStripeIntent(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'credit_package_id' => 'required|exists:credit_packages,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
             $package = CreditPackage::findOrFail($request->credit_package_id);
             $user = Auth::user();
 
-            // Create pending transaction
-            $transaction = Transaction::create([
-                'user_id' => $user->id,
-                'credit_package_id' => $package->id,
-                'type' => 'bank_deposit',
-                'amount_cents' => $package->price_cents,
-                'currency' => $package->currency,
-                'credits' => $package->credits,
-                'payment_method' => 'bank_deposit',
-                'payment_data' => [
-                    'bank_reference' => $request->bank_reference,
-                    'amount' => $request->amount,
-                    'notes' => $request->notes,
-                ],
-                'status' => 'pending',
-                'description' => "Bank deposit for {$package->name}",
-            ]);
+            if (!$package->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This credit package is not available',
+                ], 400);
+            }
+
+            $result = $this->paymentService->createStripePaymentIntent($user, $package);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Bank deposit request submitted successfully',
-                'data' => $transaction
+                'data' => $result,
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bank deposit submission failed',
-                'error' => $e->getMessage()
+                'message' => 'Failed to create payment intent',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
-    public function paymentHistory(Request $request)
+    /**
+     * Confirm Stripe payment
+     */
+    public function confirmStripePayment(Request $request): JsonResponse
     {
-        try {
-            $user = Auth::user();
-            
-            $query = Transaction::where('user_id', $user->id);
-            
-            if ($request->has('status')) {
-                $query->where('status', $request->status);
-            }
-            
-            if ($request->has('type')) {
-                $query->where('type', $request->type);
-            }
+        $validator = Validator::make($request->all(), [
+            'payment_intent_id' => 'required|string',
+        ]);
 
-            $transactions = $query->with(['creditPackage'])
-                ->orderBy('created_at', 'desc')
-                ->paginate(20);
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $transaction = $this->paymentService->confirmStripePayment($request->payment_intent_id);
 
             return response()->json([
                 'success' => true,
-                'data' => $transactions
+                'message' => 'Payment confirmed successfully',
+                'data' => $transaction->load(['creditPackage', 'user:id,name,credits_balance']),
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch payment history',
-                'error' => $e->getMessage()
+                'message' => 'Payment confirmation failed',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Create PayPal order
+     */
+    public function createPayPalOrder(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'credit_package_id' => 'required|exists:credit_packages,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $package = CreditPackage::findOrFail($request->credit_package_id);
+            $user = Auth::user();
+
+            if (!$package->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This credit package is not available',
+                ], 400);
+            }
+
+            $result = $this->paymentService->createPayPalOrder($user, $package);
+
+            return response()->json([
+                'success' => true,
+                'data' => $result,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create PayPal order',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Capture PayPal payment
+     */
+    public function capturePayPalPayment(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'order_id' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $transaction = $this->paymentService->capturePayPalPayment($request->order_id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'PayPal payment captured successfully',
+                'data' => $transaction->load(['creditPackage', 'user:id,name,credits_balance']),
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'PayPal payment capture failed',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Create bank deposit transaction
+     */
+    public function createBankDeposit(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'credit_package_id' => 'required|exists:credit_packages,id',
+            'depositor_name' => 'required|string|max:255',
+            'reference' => 'nullable|string|max:255',
+            'deposit_date' => 'nullable|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $package = CreditPackage::findOrFail($request->credit_package_id);
+            $user = Auth::user();
+
+            if (!$package->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This credit package is not available',
+                ], 400);
+            }
+
+            $depositInfo = [
+                'depositor_name' => $request->depositor_name,
+                'reference' => $request->reference,
+                'deposit_date' => $request->deposit_date ?? now()->toDateString(),
+            ];
+
+            $transaction = $this->paymentService->createBankDepositTransaction($user, $package, $depositInfo);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bank deposit transaction created. Awaiting approval.',
+                'data' => [
+                    'transaction' => $transaction,
+                    'bank_instructions' => $this->paymentService->getBankDepositInstructions(),
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create bank deposit transaction',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get bank deposit instructions
+     */
+    public function getBankInstructions(): JsonResponse
+    {
+        try {
+            $instructions = $this->paymentService->getBankDepositInstructions();
+
+            return response()->json([
+                'success' => true,
+                'data' => $instructions,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get bank instructions',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get user's transaction history
+     */
+    public function transactions(Request $request): JsonResponse
+    {
+        $transactions = Auth::user()->transactions()
+            ->with(['creditPackage'])
+            ->when($request->status, function ($query, $status) {
+                $query->where('status', $status);
+            })
+            ->when($request->payment_method, function ($query, $method) {
+                $query->where('payment_method', $method);
+            })
+            ->orderByDesc('created_at')
+            ->paginate(20);
+
+        return response()->json([
+            'success' => true,
+            'data' => $transactions,
+        ]);
+    }
+
+    /**
+     * Admin: Approve bank deposit
+     */
+    public function approveBankDeposit(Request $request, Transaction $transaction): JsonResponse
+    {
+        if (!Auth::user()->isAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Admin access required',
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'admin_note' => 'nullable|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $updatedTransaction = $this->paymentService->approveBankDeposit(
+                $transaction,
+                $request->admin_note ?? ''
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bank deposit approved successfully',
+                'data' => $updatedTransaction->load(['creditPackage', 'user:id,name,credits_balance']),
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to approve bank deposit',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin: Reject bank deposit
+     */
+    public function rejectBankDeposit(Request $request, Transaction $transaction): JsonResponse
+    {
+        if (!Auth::user()->isAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Admin access required',
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'rejection_reason' => 'required|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $updatedTransaction = $this->paymentService->rejectBankDeposit(
+                $transaction,
+                $request->rejection_reason
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bank deposit rejected',
+                'data' => $updatedTransaction,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to reject bank deposit',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin: Get payment statistics
+     */
+    public function paymentStats(Request $request): JsonResponse
+    {
+        if (!Auth::user()->isAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Admin access required',
+            ], 403);
+        }
+
+        try {
+            $days = $request->get('days', 30);
+            $stats = $this->paymentService->getPaymentStats($days);
+
+            return response()->json([
+                'success' => true,
+                'data' => $stats,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get payment statistics',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin: Process refund
+     */
+    public function processRefund(Request $request, Transaction $transaction): JsonResponse
+    {
+        if (!Auth::user()->isAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Admin access required',
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'refund_amount' => 'nullable|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $refundAmount = $request->refund_amount ?? $transaction->amount_cents;
+            $updatedTransaction = $this->paymentService->processRefund($transaction, $refundAmount);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Refund processed successfully',
+                'data' => $updatedTransaction,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Refund failed',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

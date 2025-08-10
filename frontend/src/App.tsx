@@ -6,6 +6,9 @@ import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import LandingPage from './pages/LandingPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import Pricing from './pages/Pricing';
+import AIAssistantGallery from './components/ai/AIAssistantGallery';
+import ChatInterface from './components/chat/ChatInterface';
 
 function App() {
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -56,6 +59,33 @@ function App() {
                 <Navigate to="/" replace />
               )
             } 
+          />
+
+          <Route 
+            path="/ai-assistants" 
+            element={
+              isAuthenticated ? (
+                <AIAssistantGallery />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            } 
+          />
+
+          <Route 
+            path="/chat/:chatId" 
+            element={
+              isAuthenticated ? (
+                <ChatInterface />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            } 
+          />
+
+          <Route 
+            path="/pricing" 
+            element={<Pricing />} 
           />
           
           {/* Admin Routes */}
