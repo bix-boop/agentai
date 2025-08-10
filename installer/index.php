@@ -105,28 +105,36 @@ function handleDatabaseSetup() {
     if (empty($username)) $errors[] = "Database username is required.";
     
     if (empty($errors)) {
-        // Test database connection
-        try {
-            $dsn = "mysql:host={$host};port={$port};dbname={$database};charset=utf8mb4";
-            $pdo = new PDO($dsn, $username, $password, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            ]);
-            
-            $_SESSION['database_config'] = [
-                'host' => $host,
-                'port' => $port,
-                'database' => $database,
-                'username' => $username,
-                'password' => $password,
-            ];
-            
-            header('Location: ?step=4');
-            exit;
-            
-        } catch (PDOException $e) {
-            $errors[] = "Database connection failed: " . $e->getMessage();
+        // Test database connection with retries
+        $dsn = "mysql:host={$host};port={$port};dbname={$database};charset=utf8mb4";
+        $attempts = 0;
+        $maxAttempts = 3;
+        $lastError = '';
+        while ($attempts < $maxAttempts) {
+            try {
+                $pdo = new PDO($dsn, $username, $password, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_TIMEOUT => 5,
+                ]);
+                // Basic connectivity check
+                $pdo->query('SELECT 1');
+                $_SESSION['database_config'] = [
+                    'host' => $host,
+                    'port' => $port,
+                    'database' => $database,
+                    'username' => $username,
+                    'password' => $password,
+                ];
+                header('Location: ?step=4');
+                exit;
+            } catch (PDOException $e) {
+                $lastError = $e->getMessage();
+                $attempts++;
+                usleep(200000); // 200ms backoff
+            }
         }
+        $errors[] = "Database connection failed after {$maxAttempts} attempts: " . $lastError;
     }
     
     $_SESSION['database_errors'] = $errors;
@@ -155,6 +163,16 @@ function handleApplicationSetup() {
     
     if (strlen($admin_password) < 8) {
         $errors[] = "Admin password must be at least 8 characters long.";
+    }
+    
+    // Validate URL format and scheme
+    if (!empty($site_url)) {
+        $normalizedUrl = rtrim($site_url, '/');
+        if (!preg_match('/^https?:\/\//i', $normalizedUrl)) {
+            $errors[] = "Site URL must start with http:// or https://";
+        } elseif (!filter_var($normalizedUrl, FILTER_VALIDATE_URL)) {
+            $errors[] = "Site URL is not valid.";
+        }
     }
     
     if (empty($errors)) {

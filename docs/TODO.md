@@ -45,8 +45,8 @@ This document tracks implementation status and tasks across the entire codebase.
 
 ## Installer (`/installer`)
 - Requirements step: improve permission checks for `backend/storage` and `bootstrap/cache` (recursive). [DONE]
-- Database step: add connectivity retry and better error messages. [TODO]
-- Application setup: validate URLs and email formats. [TODO]
+- Database step: add connectivity retry and better error messages. [DONE]
+- Application setup: validate URLs and email formats. [DONE]
 - Installation step: stream artisan output logs, capture errors. [TODO]
 - Post-install: link `storage`, run `php artisan config:cache`. [DONE]
 - Frontend build: after build, copy `frontend/build` to `backend/public/app`. [DONE]
@@ -72,8 +72,8 @@ This document tracks implementation status and tasks across the entire codebase.
 - Frontend React 18 + RRD v6 compatibility with existing code: basic review passed; full run pending actual build. [PENDING]
 
 ## Next actions
-- Add DB indexes/uniques where missing and ensure foreign keys have proper cascades. [START]
-- Harden database step errors and add retries; validate URLs/emails in installer. [NEXT]
+- Add DB indexes/uniques where missing and ensure foreign keys have proper cascades. [REVIEW DONE]
+- Implement installer log streaming for artisan commands. [START NEXT]
 - Test Auth and Admin flows end-to-end and patch any API validation gaps. [THEN]
 
 ## Payments
