@@ -59,6 +59,8 @@ This document tracks implementation status and tasks across the entire codebase.
 - Chat
   - `components/chat/*`: Add streaming, loading states, and error boundaries. [REVIEW]
   - `hooks/useChat.ts`: Implement chat hook and wire to backend endpoints. [DONE]
+  - Chat API alignment (field names and response shapes). [DONE]
+  - Implement image generation API handler to return { message, images, credits_used, user_credits_remaining }. [TODO]
 - AI Catalog
   - `components/ai/AIAssistantGallery.tsx`: Filter/sort by categories/tier. [TODO]
 - Admin
