@@ -54,6 +54,7 @@ This document tracks implementation status and tasks across the entire codebase.
 ## Frontend (CRA)
 - Auth
   - `hooks/useAuth.ts`: Ensure token storage, refresh, and logout. [REVIEW]
+  - `components/auth/AuthModal.tsx`: Review login/register flows and error handling. [DONE]
   - Replace modal-based auth with dedicated pages for SEO fallback. [TODO]
 - Chat
   - `components/chat/*`: Add streaming, loading states, and error boundaries. [REVIEW]
@@ -75,7 +76,8 @@ This document tracks implementation status and tasks across the entire codebase.
 - CORS config allows all origins for API; Sanctum bearer token usage confirmed. [OK]
 
 ## Next actions
-- Validate auth/admin endpoint contracts vs frontend usage and normalize responses where needed. [START]
+- Validate auth/admin endpoint contracts vs frontend usage and normalize responses where needed. [IN PROGRESS]
+- Standardize backend error shapes for auth endpoints to include message, error_code, errors[]. [TODO]
 - End-to-end smoke test (auth, gallery, start chat) and fix any breakages encountered. [THEN]
 
 ## Payments
