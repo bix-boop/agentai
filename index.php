@@ -76,6 +76,10 @@ if (strpos($requestPath, '/api/') === 0) {
     // Set up environment for Laravel
     $_SERVER['SCRIPT_NAME'] = '/backend/public/index.php';
     $_SERVER['SCRIPT_FILENAME'] = __DIR__ . '/backend/public/index.php';
+    $_SERVER['REQUEST_URI'] = $requestUri;
+    
+    // Change to backend directory for proper Laravel execution
+    chdir(__DIR__ . '/backend/public');
     
     // Include Laravel
     require_once __DIR__ . '/backend/public/index.php';
@@ -84,14 +88,23 @@ if (strpos($requestPath, '/api/') === 0) {
 
 // Handle admin requests
 if (strpos($requestPath, '/admin') === 0) {
-    // Serve the React admin app (or fallback)
-    if (file_exists(__DIR__ . '/frontend/dist/index.html')) {
-        header('Content-Type: text/html');
-        readfile(__DIR__ . '/frontend/dist/index.html');
+    if ($requestPath === '/admin' || $requestPath === '/admin/') {
+        // Redirect to simple admin login (bypasses database issues)
+        header('Location: /admin-login-simple.php');
+        exit;
+    } elseif ($requestPath === '/admin/dashboard') {
+        // Redirect to simple admin dashboard
+        header('Location: /admin-dashboard-simple.php');
+        exit;
     } else {
-        // Fallback admin login
-        header('Content-Type: text/html');
-        include __DIR__ . '/frontend/public/index.html';
+        // Serve the React admin app (or fallback)
+        if (file_exists(__DIR__ . '/frontend/dist/index.html')) {
+            header('Content-Type: text/html');
+            readfile(__DIR__ . '/frontend/dist/index.html');
+        } else {
+            // Fallback to simple admin login
+            header('Location: /admin-login-simple.php');
+        }
     }
     exit;
 }

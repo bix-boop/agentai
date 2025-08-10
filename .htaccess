@@ -3,6 +3,16 @@ RewriteEngine On
 # Handle installer requests
 RewriteRule ^installer/(.*)$ installer/$1 [L]
 
+# Handle admin login and dashboard (direct PHP files)
+RewriteRule ^admin-login-simple\.php$ admin-login-simple.php [L]
+RewriteRule ^admin-dashboard-simple\.php$ admin-dashboard-simple.php [L]
+RewriteRule ^admin-login\.php$ admin-login.php [L]
+RewriteRule ^admin-dashboard\.php$ admin-dashboard.php [L]
+
+# Handle database fix scripts
+RewriteRule ^fix_database\.php$ fix_database.php [L]
+RewriteRule ^fix_database_plesk\.php$ fix_database_plesk.php [L]
+
 # Handle static assets
 RewriteRule ^(frontend|backend)/(.*)$ $1/$2 [L]
 
