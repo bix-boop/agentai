@@ -12,7 +12,7 @@ This document tracks implementation status and tasks across the entire codebase.
 ## Backend (Laravel)
 - Routes
   - `routes/api.php`: Validate all endpoints and middleware bindings. Add missing validations and rate-limiting where necessary. [REVIEW]
-  - `routes/web.php`: Replace placeholder welcome view with frontend handoff or admin SPA entry. [TODO]
+  - `routes/web.php`: Serve SPA and exclude `/api` endpoints. [DONE]
 - Controllers (`app/Http/Controllers`)
   - API
     - `AuthController.php`: Verify email/verification and password reset flows. Add throttling. [REVIEW]
@@ -49,7 +49,7 @@ This document tracks implementation status and tasks across the entire codebase.
 - Application setup: validate URLs and email formats. [TODO]
 - Installation step: stream artisan output logs, capture errors. [TODO]
 - Post-install: link `storage`, run `php artisan config:cache`. [TODO]
-- Frontend build: after build, optionally copy `frontend/build` to `backend/public/app`. [TODO]
+- Frontend build: after build, copy `frontend/build` to `backend/public/app`. [DONE]
 
 ## Frontend (CRA)
 - Auth
@@ -65,6 +65,16 @@ This document tracks implementation status and tasks across the entire codebase.
   - Ensure 404 page and protected route wrapper. [TODO]
 - Theming
   - Tailwind dark mode, color customization settings integration. [TODO]
+
+## Compatibility checks performed
+- Laravel SPA routing vs API routing: compatible. [OK]
+- Installer Node build and copy step: compatible with CRA output. [OK]
+- Frontend React 18 + RRD v6 compatibility with existing code: basic review passed; full run pending actual build. [PENDING]
+
+## Next actions
+- Add DB indexes/uniques where missing and ensure foreign keys have proper cascades.
+- Harden installer permissions checks and add post-install steps (`storage:link`, `config:cache`).
+- Test Auth and Admin flows end-to-end and patch any API validation gaps.
 
 ## Payments
 - Stripe
