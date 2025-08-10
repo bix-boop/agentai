@@ -57,6 +57,7 @@ This document tracks implementation status and tasks across the entire codebase.
   - Replace modal-based auth with dedicated pages for SEO fallback. [TODO]
 - Chat
   - `components/chat/*`: Add streaming, loading states, and error boundaries. [REVIEW]
+  - `hooks/useChat.ts`: Implement chat hook and wire to backend endpoints. [DONE]
 - AI Catalog
   - `components/ai/AIAssistantGallery.tsx`: Filter/sort by categories/tier. [TODO]
 - Admin
@@ -84,6 +85,7 @@ This document tracks implementation status and tasks across the entire codebase.
   - Create/capture order and webhook validation. [TODO]
 - Bank Deposit
   - Admin manual approval flow and notifications. [TODO]
+- Controller endpoints presence in backend: create intent/confirm PayPal/bank deposit verified. [REVIEW DONE]
 
 ## Analytics & Reporting
 - Aggregate queries and caching. [TODO]
@@ -104,3 +106,10 @@ This document tracks implementation status and tasks across the entire codebase.
 - Admin: Users, AIs, Categories, Packages, Transactions, Settings. [ ]
 - Security: rate limit, CSRF, CORS, content filtering. [ ]
 - Frontend build and served correctly under `backend/public`. [ ]
+
+## E2E Smoke Test Steps
+- Install via installer wizard; confirm .env/migrations/admin created. [PENDING]
+- Register a user; login; verify token and profile endpoint. [PENDING]
+- Browse AI assistants; start a chat; send a message; receive AI response. [PENDING]
+- Purchase credits (Stripe test); verify credits update and webhook processed. [PENDING]
+- Access admin dashboard as admin; review analytics endpoints. [PENDING]
