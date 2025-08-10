@@ -58,17 +58,27 @@ function handleRequirementsCheck() {
         }
     }
     
-    // Check directory permissions
+    // Check directory permissions (recursive)
     $directories = [
         '../backend/storage',
         '../backend/bootstrap/cache',
-        '../backend/public/storage',
-        '../frontend/build',
+        '../backend/public',
     ];
     
     foreach ($directories as $dir) {
+        if (!is_dir($dir)) {
+            $errors[] = "Directory '{$dir}' not found.";
+            continue;
+        }
         if (!is_writable($dir)) {
             $errors[] = "Directory '{$dir}' must be writable.";
+        }
+        // Simple recursive write test
+        $testFile = rtrim($dir, '/') . '/.perm_test_' . uniqid() . '.tmp';
+        if (@file_put_contents($testFile, 'ok') === false) {
+            $errors[] = "Directory '{$dir}' is not writable by PHP process.";
+        } else {
+            @unlink($testFile);
         }
     }
     
@@ -95,28 +105,36 @@ function handleDatabaseSetup() {
     if (empty($username)) $errors[] = "Database username is required.";
     
     if (empty($errors)) {
-        // Test database connection
-        try {
-            $dsn = "mysql:host={$host};port={$port};dbname={$database};charset=utf8mb4";
-            $pdo = new PDO($dsn, $username, $password, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            ]);
-            
-            $_SESSION['database_config'] = [
-                'host' => $host,
-                'port' => $port,
-                'database' => $database,
-                'username' => $username,
-                'password' => $password,
-            ];
-            
-            header('Location: ?step=4');
-            exit;
-            
-        } catch (PDOException $e) {
-            $errors[] = "Database connection failed: " . $e->getMessage();
+        // Test database connection with retries
+        $dsn = "mysql:host={$host};port={$port};dbname={$database};charset=utf8mb4";
+        $attempts = 0;
+        $maxAttempts = 3;
+        $lastError = '';
+        while ($attempts < $maxAttempts) {
+            try {
+                $pdo = new PDO($dsn, $username, $password, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_TIMEOUT => 5,
+                ]);
+                // Basic connectivity check
+                $pdo->query('SELECT 1');
+                $_SESSION['database_config'] = [
+                    'host' => $host,
+                    'port' => $port,
+                    'database' => $database,
+                    'username' => $username,
+                    'password' => $password,
+                ];
+                header('Location: ?step=4');
+                exit;
+            } catch (PDOException $e) {
+                $lastError = $e->getMessage();
+                $attempts++;
+                usleep(200000); // 200ms backoff
+            }
         }
+        $errors[] = "Database connection failed after {$maxAttempts} attempts: " . $lastError;
     }
     
     $_SESSION['database_errors'] = $errors;
@@ -145,6 +163,16 @@ function handleApplicationSetup() {
     
     if (strlen($admin_password) < 8) {
         $errors[] = "Admin password must be at least 8 characters long.";
+    }
+    
+    // Validate URL format and scheme
+    if (!empty($site_url)) {
+        $normalizedUrl = rtrim($site_url, '/');
+        if (!preg_match('/^https?:\/\//i', $normalizedUrl)) {
+            $errors[] = "Site URL must start with http:// or https://";
+        } elseif (!filter_var($normalizedUrl, FILTER_VALIDATE_URL)) {
+            $errors[] = "Site URL is not valid.";
+        }
     }
     
     if (empty($errors)) {
@@ -193,6 +221,9 @@ function handleFinalInstallation() {
         
         // Set up default data
         setupDefaultData();
+        
+        // Post install: storage link and config cache
+        postInstallTasks();
         
         // Build frontend
         buildFrontend();
@@ -399,8 +430,25 @@ function setupDefaultData() {
     }
 }
 
+function postInstallTasks() {
+    $backendPath = dirname(__DIR__) . '/backend';
+    try {
+        // Storage link
+        PHPUtils::execArtisan('storage:link', $backendPath);
+        // Cache config
+        PHPUtils::execArtisan('config:cache', $backendPath);
+        // Clear optimize caches
+        PHPUtils::execArtisan('optimize:clear', $backendPath);
+    } catch (Exception $e) {
+        // Non-fatal: log but do not stop installation
+        PHPUtils::log('Post-install tasks warning: ' . $e->getMessage());
+    }
+}
+
 function buildFrontend() {
     $frontendPath = dirname(__DIR__) . '/frontend';
+    $backendPublicPath = dirname(__DIR__) . '/backend/public';
+    $targetPath = $backendPublicPath . '/app';
     
     // Only build if Node.js is available
     $nodeExists = !empty(shell_exec('which node 2>/dev/null'));
@@ -410,15 +458,43 @@ function buildFrontend() {
     
     chdir($frontendPath);
     exec('npm install 2>&1', $output, $returnCode);
-    
     if ($returnCode !== 0) {
         throw new Exception('Frontend dependency installation failed: ' . implode('\n', $output));
     }
     
     exec('npm run build 2>&1', $output, $returnCode);
-    
     if ($returnCode !== 0) {
         throw new Exception('Frontend build failed: ' . implode('\n', $output));
+    }
+    
+    // Copy build to backend/public/app
+    $buildDir = $frontendPath . '/build';
+    if (!is_dir($buildDir)) {
+        throw new Exception('Frontend build directory not found at: ' . $buildDir);
+    }
+    
+    if (!is_dir($targetPath)) {
+        if (!mkdir($targetPath, 0755, true)) {
+            throw new Exception('Failed to create target directory: ' . $targetPath);
+        }
+    }
+    
+    // Recursively copy build files
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($buildDir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    );
+    foreach ($iterator as $item) {
+        $destPath = $targetPath . DIRECTORY_SEPARATOR . $iterator->getSubPathName();
+        if ($item->isDir()) {
+            if (!is_dir($destPath) && !mkdir($destPath, 0755, true)) {
+                throw new Exception('Failed to create directory: ' . $destPath);
+            }
+        } else {
+            if (!copy($item->getPathname(), $destPath)) {
+                throw new Exception('Failed to copy file: ' . $item->getPathname() . ' to ' . $destPath);
+            }
+        }
     }
 }
 

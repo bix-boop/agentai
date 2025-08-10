@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { ApiResponse, ApiError } from '../types/chat';
 
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api/v1';
 const REQUEST_TIMEOUT = 30000; // 30 seconds
 
 // Create axios instance
