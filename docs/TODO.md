@@ -67,9 +67,11 @@ This document tracks implementation status and tasks across the entire codebase.
   - Tailwind dark mode, color customization settings integration. [TODO]
 
 ## Compatibility checks performed
+- Laravel framework lockfile is v12; composer.json updated to ^12 to match. [OK]
 - Laravel SPA routing vs API routing: compatible. [OK]
 - Installer Node build and copy step: compatible with CRA output. [OK]
 - Frontend React 18 + RRD v6 compatibility with existing code: basic review passed; full run pending actual build. [PENDING]
+- CORS config allows all origins for API; Sanctum bearer token usage confirmed. [OK]
 
 ## Next actions
 - Add DB indexes/uniques where missing and ensure foreign keys have proper cascades. [REVIEW DONE]
