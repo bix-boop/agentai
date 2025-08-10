@@ -34,6 +34,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
+                'error_code' => 'validation_error',
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -98,6 +99,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
+                'error_code' => 'validation_error',
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -265,6 +267,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
+                'error_code' => 'validation_error',
                 'errors' => $validator->errors()
             ], 422);
         }
@@ -311,6 +314,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
+                'error_code' => 'validation_error',
                 'errors' => $validator->errors()
             ], 422);
         }
