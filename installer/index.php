@@ -401,6 +401,8 @@ function setupDefaultData() {
 
 function buildFrontend() {
     $frontendPath = dirname(__DIR__) . '/frontend';
+    $backendPublicPath = dirname(__DIR__) . '/backend/public';
+    $targetPath = $backendPublicPath . '/app';
     
     // Only build if Node.js is available
     $nodeExists = !empty(shell_exec('which node 2>/dev/null'));
@@ -410,15 +412,43 @@ function buildFrontend() {
     
     chdir($frontendPath);
     exec('npm install 2>&1', $output, $returnCode);
-    
     if ($returnCode !== 0) {
         throw new Exception('Frontend dependency installation failed: ' . implode('\n', $output));
     }
     
     exec('npm run build 2>&1', $output, $returnCode);
-    
     if ($returnCode !== 0) {
         throw new Exception('Frontend build failed: ' . implode('\n', $output));
+    }
+    
+    // Copy build to backend/public/app
+    $buildDir = $frontendPath . '/build';
+    if (!is_dir($buildDir)) {
+        throw new Exception('Frontend build directory not found at: ' . $buildDir);
+    }
+    
+    if (!is_dir($targetPath)) {
+        if (!mkdir($targetPath, 0755, true)) {
+            throw new Exception('Failed to create target directory: ' . $targetPath);
+        }
+    }
+    
+    // Recursively copy build files
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($buildDir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    );
+    foreach ($iterator as $item) {
+        $destPath = $targetPath . DIRECTORY_SEPARATOR . $iterator->getSubPathName();
+        if ($item->isDir()) {
+            if (!is_dir($destPath) && !mkdir($destPath, 0755, true)) {
+                throw new Exception('Failed to create directory: ' . $destPath);
+            }
+        } else {
+            if (!copy($item->getPathname(), $destPath)) {
+                throw new Exception('Failed to copy file: ' . $item->getPathname() . ' to ' . $destPath);
+            }
+        }
     }
 }
 
