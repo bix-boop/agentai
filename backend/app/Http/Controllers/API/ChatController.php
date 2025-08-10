@@ -266,9 +266,11 @@ class ChatController extends Controller
             // Create user message
             $userMessage = Message::create([
                 'chat_id' => $chat->id,
-                'sender' => 'user',
+                'role' => 'user',
                 'content' => $content,
-                'type' => $type,
+                'metadata' => [
+                    'type' => $type,
+                ],
                 'tokens_used' => 0,
                 'credits_consumed' => 0,
             ]);
@@ -316,9 +318,9 @@ class ChatController extends Controller
                 'message' => 'Message sent successfully',
                 'data' => [
                     'user_message' => $userMessage,
-                    'ai_response' => $aiResponse['message'],
-                    'credits_consumed' => $aiResponse['credits_consumed'],
-                    'remaining_credits' => $user->fresh()->credits_balance,
+                    'ai_message' => $aiResponse['message'],
+                    'credits_used' => $aiResponse['credits_consumed'],
+                    'user_credits_remaining' => $user->fresh()->credits_balance,
                 ],
             ]);
 
@@ -561,9 +563,9 @@ class ChatController extends Controller
                 'success' => true,
                 'message' => 'Response regenerated successfully',
                 'data' => [
-                    'new_response' => $aiResponse['message'],
-                    'credits_consumed' => $aiResponse['credits_consumed'],
-                    'remaining_credits' => $user->fresh()->credits_balance,
+                    'ai_message' => $aiResponse['message'],
+                    'credits_used' => $aiResponse['credits_consumed'],
+                    'user_credits_remaining' => $user->fresh()->credits_balance,
                 ],
             ]);
 
@@ -692,16 +694,16 @@ class ChatController extends Controller
             // Create AI message
             $aiMessage = Message::create([
                 'chat_id' => $chat->id,
-                'sender' => 'assistant',
+                'role' => 'assistant',
                 'content' => $response['content'],
-                'type' => 'text',
-                'tokens_used' => $response['tokens_used'] ?? 0,
-                'credits_consumed' => $creditsConsumed,
                 'metadata' => [
+                    'type' => 'text',
                     'model' => $assistant->model,
                     'temperature' => $assistant->temperature,
                     'response_time' => $response['response_time'] ?? null,
                 ],
+                'tokens_used' => $response['tokens_used'] ?? 0,
+                'credits_consumed' => $creditsConsumed,
             ]);
 
             return [
