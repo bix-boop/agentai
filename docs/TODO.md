@@ -99,6 +99,7 @@ This document tracks implementation status and tasks across the entire codebase.
 - Add `deployment/scripts/*` with server setup and cron examples. [TODO]
 - Document Plesk steps and troubleshooting. [TODO]
 - Installer Plesk readiness (PHP path detection, composer fallback via composer.phar, Node optional build copy): [DONE]
+- Add `docs/ASSET_UPLOADS.md` to list optional uploads (frontend/build, composer.phar, vendor.zip, .env). [DONE]
 
 ## Legacy Cleanup (root PHP files)
 - Migrate legacy scripts in repo root (e.g., `admin-login.php`, `admin-dashboard.php`, etc.) into Laravel routes or remove. [TODO]
