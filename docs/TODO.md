@@ -77,8 +77,8 @@ This document tracks implementation status and tasks across the entire codebase.
 
 ## Next actions
 - Validate auth/admin endpoint contracts vs frontend usage and normalize responses where needed. [IN PROGRESS]
-- Standardize backend error shapes for auth endpoints to include message, error_code, errors[]. [TODO]
-- End-to-end smoke test (auth, gallery, start chat) and fix any breakages encountered. [THEN]
+- Standardize backend error shapes for auth endpoints to include message, error_code, errors[]. [DONE]
+- End-to-end smoke test (auth, gallery, start chat) and fix any breakages encountered. [NEXT]
 
 ## Payments
 - Stripe
