@@ -169,18 +169,52 @@ class PHPUtils {
      * Check if Composer is available
      */
     public static function checkComposer() {
+        // Try system composer
         $paths = ['composer', '/usr/local/bin/composer', '/usr/bin/composer'];
-        
         foreach ($paths as $path) {
             $output = @shell_exec("$path --version 2>/dev/null");
             if (!empty($output) && strpos($output, 'Composer') !== false) {
                 return $path;
             }
         }
-        
         return false;
     }
-    
+
+    /**
+     * Ensure a usable composer command. If system composer is not available,
+     * attempt to download composer.phar into the backend directory and return the command to invoke it.
+     * Returns an array [composerCommand, workingDir]
+     */
+    public static function ensureComposer(string $backendPath): array
+    {
+        $systemComposer = self::checkComposer();
+        if ($systemComposer) {
+            return [$systemComposer, $backendPath];
+        }
+
+        // Try local composer.phar in backend
+        $composerPhar = $backendPath . '/composer.phar';
+        if (!file_exists($composerPhar)) {
+            // Attempt to download composer-stable.phar
+            try {
+                $composerUrl = 'https://getcomposer.org/composer-stable.phar';
+                $pharData = @file_get_contents($composerUrl);
+                if ($pharData === false) {
+                    throw new \Exception('Unable to download composer.phar');
+                }
+                if (@file_put_contents($composerPhar, $pharData) === false) {
+                    throw new \Exception('Failed to save composer.phar at ' . $composerPhar);
+                }
+            } catch (\Exception $e) {
+                throw new \Exception('Composer not available and download failed: ' . $e->getMessage());
+            }
+        }
+
+        // Return command to run composer.phar with detected PHP
+        $phpPath = self::detectPHPPath();
+        return ["$phpPath $composerPhar", $backendPath];
+    }
+
     /**
      * Log message with timestamp
      */
