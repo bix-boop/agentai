@@ -309,11 +309,11 @@ class AIAssistantController extends Controller
     /**
      * Toggle favorite status
      */
-    public function toggleFavorite(AIAssistant $assistant): JsonResponse
+    public function favorite(AIAssistant $aiAssistant): JsonResponse
     {
         try {
             $userId = Auth::id();
-            $isFavorited = UserFavorite::toggle($userId, $assistant->id);
+            $isFavorited = UserFavorite::toggle($userId, $aiAssistant->id);
 
             return response()->json([
                 'success' => true,
@@ -325,6 +325,29 @@ class AIAssistantController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to toggle favorite',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function unfavorite(AIAssistant $aiAssistant): JsonResponse
+    {
+        try {
+            $userId = Auth::id();
+            if (UserFavorite::isFavorited($userId, $aiAssistant->id)) {
+                UserFavorite::toggle($userId, $aiAssistant->id);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Removed from favorites',
+                'data' => ['is_favorited' => false],
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to remove favorite',
                 'error' => $e->getMessage(),
             ], 500);
         }
