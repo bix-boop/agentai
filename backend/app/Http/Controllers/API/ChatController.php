@@ -132,8 +132,11 @@ class ChatController extends Controller
             if ($request->initial_message) {
                 $userMessage = Message::create([
                     'chat_id' => $chat->id,
-                    'sender' => 'user',
+                    'role' => 'user',
                     'content' => $request->initial_message,
+                    'metadata' => [
+                        'type' => 'text',
+                    ],
                     'tokens_used' => 0,
                     'credits_consumed' => 0,
                 ]);
@@ -499,7 +502,7 @@ class ChatController extends Controller
         }
 
         // Check if message is the last AI message
-        if ($message->sender !== 'assistant' || $message->chat_id !== $chat->id) {
+        if ($message->role !== 'assistant' || $message->chat_id !== $chat->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid message for regeneration',
@@ -511,7 +514,7 @@ class ChatController extends Controller
 
             // Get the user message that prompted this response
             $userMessage = $chat->messages()
-                ->where('sender', 'user')
+                ->where('role', 'user')
                 ->where('created_at', '<', $message->created_at)
                 ->orderByDesc('created_at')
                 ->first();
@@ -646,8 +649,8 @@ class ChatController extends Controller
         try {
             $stats = [
                 'total_messages' => $chat->messages()->count(),
-                'user_messages' => $chat->messages()->where('sender', 'user')->count(),
-                'ai_messages' => $chat->messages()->where('sender', 'assistant')->count(),
+                'user_messages' => $chat->messages()->where('role', 'user')->count(),
+                'ai_messages' => $chat->messages()->where('role', 'assistant')->count(),
                 'total_credits_used' => $chat->credits_used,
                 'average_response_time' => $this->calculateAverageResponseTime($chat),
                 'chat_duration' => $chat->created_at->diffInMinutes($chat->updated_at),
@@ -737,7 +740,7 @@ class ChatController extends Controller
 
         return $messages->map(function ($message) {
             return [
-                'role' => $message->sender === 'user' ? 'user' : 'assistant',
+                'role' => $message->role === 'user' ? 'user' : 'assistant',
                 'content' => $message->content,
             ];
         })->toArray();
@@ -775,7 +778,7 @@ class ChatController extends Controller
             $currentMessage = $messages[$i];
 
             // Only count AI responses to user messages
-            if ($prevMessage->sender === 'user' && $currentMessage->sender === 'assistant') {
+            if ($prevMessage->role === 'user' && $currentMessage->role === 'assistant') {
                 $responseTime = $prevMessage->created_at->diffInSeconds($currentMessage->created_at);
                 $responseTimes[] = $responseTime;
             }
@@ -795,7 +798,7 @@ class ChatController extends Controller
         $content .= str_repeat('=', 50) . "\n\n";
 
         foreach ($chat->messages as $message) {
-            $sender = $message->sender === 'user' ? 'You' : $chat->aiAssistant->name;
+            $sender = $message->role === 'user' ? 'You' : $chat->aiAssistant->name;
             $timestamp = $message->created_at->format('Y-m-d H:i:s');
             
             $content .= "[{$timestamp}] {$sender}:\n";
@@ -824,9 +827,9 @@ class ChatController extends Controller
             'messages' => $chat->messages->map(function ($message) {
                 return [
                     'id' => $message->id,
-                    'sender' => $message->sender,
+                    'role' => $message->role,
                     'content' => $message->content,
-                    'type' => $message->type,
+                    'type' => $message->metadata['type'] ?? null,
                     'created_at' => $message->created_at->toISOString(),
                     'credits_consumed' => $message->credits_consumed,
                 ];
