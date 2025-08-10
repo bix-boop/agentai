@@ -60,7 +60,7 @@ This document tracks implementation status and tasks across the entire codebase.
   - `components/chat/*`: Add streaming, loading states, and error boundaries. [REVIEW]
   - `hooks/useChat.ts`: Implement chat hook and wire to backend endpoints. [DONE]
   - Chat API alignment (field names and response shapes). [DONE]
-  - Implement image generation API handler to return { message, images, credits_used, user_credits_remaining }. [TODO]
+  - Implement image generation API handler to return { message, images, credits_used, user_credits_remaining }. [DONE]
 - AI Catalog
   - `components/ai/AIAssistantGallery.tsx`: Filter/sort by categories/tier. [TODO]
 - Admin
@@ -114,6 +114,6 @@ This document tracks implementation status and tasks across the entire codebase.
 ## E2E Smoke Test Steps
 - Install via installer wizard; confirm .env/migrations/admin created. [PENDING]
 - Register a user; login; verify token and profile endpoint. [PENDING]
-- Browse AI assistants; start a chat; send a message; receive AI response. [PENDING]
+- Browse AI assistants; start a chat; send a message; receive AI response. [IN PROGRESS]
 - Purchase credits (Stripe test); verify credits update and webhook processed. [PENDING]
 - Access admin dashboard as admin; review analytics endpoints. [PENDING]

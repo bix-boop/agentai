@@ -119,8 +119,11 @@ class ChatController extends Controller
             // Send welcome message from AI
             $welcomeMessage = Message::create([
                 'chat_id' => $chat->id,
-                'sender' => 'assistant',
+                'role' => 'assistant',
                 'content' => $assistant->welcome_message,
+                'metadata' => [
+                    'type' => 'text',
+                ],
                 'tokens_used' => 0,
                 'credits_consumed' => 0,
             ]);
@@ -831,5 +834,104 @@ class ChatController extends Controller
         ];
 
         return json_encode($data, JSON_PRETTY_PRINT);
+    }
+
+    /**
+     * Generate image via AI for a chat
+     */
+    public function generateImage(Request $request, Chat $chat): JsonResponse
+    {
+        // Check ownership
+        if ($chat->user_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Chat not found',
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'prompt' => 'required|string|max:1000',
+            'size' => 'nullable|string|in:256x256,512x512,1024x1024,1792x1024,1024x1792',
+            'quantity' => 'nullable|integer|min:1|max:4',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'error_code' => 'validation_error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $user = Auth::user();
+            $assistant = $chat->aiAssistant;
+            $data = $validator->validated();
+            $size = $data['size'] ?? '1024x1024';
+            $quantity = $data['quantity'] ?? 1;
+
+            // Generate images via service
+            $result = $this->openAIService->generateImage($user, $data['prompt'], $size, $quantity);
+            if (!$result || empty($result['images'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to generate images',
+                ], 500);
+            }
+
+            $images = $result['images'];
+            $content = sprintf('[Generated %d image(s) for prompt: "%s"]', count($images), $data['prompt']);
+
+            // Calculate credits (simple per character cost of prompt + fixed per image)
+            $creditsConsumed = strlen($data['prompt']) + (count($images) * 1000);
+            if (!$user->hasCredits($creditsConsumed)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Insufficient credits',
+                    'data' => [
+                        'required_credits' => $creditsConsumed,
+                        'current_balance' => $user->credits_balance,
+                    ],
+                ], 402);
+            }
+
+            // Create message with image metadata
+            $message = Message::create([
+                'chat_id' => $chat->id,
+                'role' => 'assistant',
+                'content' => $content,
+                'metadata' => [
+                    'type' => 'image_generation',
+                    'prompt' => $data['prompt'],
+                    'images' => $images,
+                    'size' => $size,
+                ],
+                'tokens_used' => 0,
+                'credits_consumed' => $creditsConsumed,
+            ]);
+
+            // Deduct credits and update chat
+            $user->deductCredits($creditsConsumed);
+            $chat->increment('credits_used', $creditsConsumed);
+            $chat->touch();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Image generated successfully',
+                'data' => [
+                    'message' => $message,
+                    'images' => $images,
+                    'credits_used' => $creditsConsumed,
+                    'user_credits_remaining' => $user->fresh()->credits_balance,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate image',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }
