@@ -87,22 +87,82 @@ class PHPUtils {
         
         return self::execPHP("artisan $command", $backendPath);
     }
-    
+
     /**
-     * Get PHP version using detected binary
+     * Stream a long-running command's output to the browser in real-time.
      */
-    public static function getPHPVersion() {
-        try {
-            $phpPath = self::detectPHPPath();
-            $output = shell_exec("$phpPath --version 2>&1");
-            if (preg_match('/PHP (\d+\.\d+\.\d+)/', $output, $matches)) {
-                return $matches[1];
-            }
-        } catch (Exception $e) {
-            // Fallback to web PHP version
+    public static function execAndStream(string $command, ?string $workingDir = null): int {
+        if ($workingDir && is_dir($workingDir)) {
+            $originalDir = getcwd();
+            chdir($workingDir);
         }
-        
-        return PHP_VERSION;
+
+        // Disable output buffering layers if possible
+        @ini_set('output_buffering', 'off');
+        @ini_set('zlib.output_compression', '0');
+        if (function_exists('apache_setenv')) {
+            @apache_setenv('no-gzip', '1');
+        }
+        @ini_set('implicit_flush', '1');
+        ob_implicit_flush(true);
+
+        $descriptorspec = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+        $process = proc_open($command, $descriptorspec, $pipes);
+        if (!is_resource($process)) {
+            if (isset($originalDir)) { chdir($originalDir); }
+            echo htmlspecialchars("Failed to start process: $command") . "\n";
+            return -1;
+        }
+
+        // Non-blocking streams
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+
+        echo "<pre class='log-output'>";
+        while (true) {
+            $stdout = stream_get_contents($pipes[1]);
+            $stderr = stream_get_contents($pipes[2]);
+            if ($stdout !== '') {
+                echo htmlspecialchars($stdout);
+                flush();
+            }
+            if ($stderr !== '') {
+                echo htmlspecialchars($stderr);
+                flush();
+            }
+
+            $status = proc_get_status($process);
+            if ($status['running'] === false) {
+                break;
+            }
+            usleep(100000); // 100ms
+        }
+        echo "</pre>";
+
+        fclose($pipes[0]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $exitCode = proc_close($process);
+
+        if (isset($originalDir)) {
+            chdir($originalDir);
+        }
+        return $exitCode;
+    }
+
+    /**
+     * Stream artisan command output in real-time.
+     */
+    public static function execArtisanStream(string $command, string $backendPath): int {
+        if (!file_exists($backendPath . '/artisan')) {
+            throw new Exception("Laravel artisan not found at: $backendPath/artisan");
+        }
+        $phpPath = self::detectPHPPath();
+        return self::execAndStream("$phpPath artisan $command 2>&1", $backendPath);
     }
     
     /**

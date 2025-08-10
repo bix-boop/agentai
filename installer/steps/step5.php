@@ -36,8 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $composerExists = !empty(shell_exec('which composer 2>/dev/null'));
         if ($composerExists) {
             echo "<p>Composer detected - installing fresh dependencies...</p>";
-            $output = shell_exec("cd {$backendPath} && composer install --no-dev --optimize-autoloader 2>&1");
-            echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
+            PHPUtils::execAndStream("composer install --no-dev --optimize-autoloader 2>&1", $backendPath);
             echo "<p class='log-success'>✅ PHP dependencies installed</p>";
         } else {
             echo "<p>Using pre-installed dependencies (Composer not required)...</p>";
@@ -111,20 +110,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // Run migrations with verbose output
-        $output = PHPUtils::execArtisan("migrate --force --verbose", $backendPath);
+        PHPUtils::execArtisanStream("migrate --force --verbose", $backendPath);
+        
+        // Verify migrations status
+        $output = PHPUtils::execArtisan("migrate:status", $backendPath);
         echo "<pre class='log-output'>" . htmlspecialchars($output) . "</pre>";
         
-        if (empty($output)) {
-            throw new Exception("Migration command produced no output. Check if artisan command is working.");
+        if (strpos($output, 'Yes') === false && strpos($output, 'Ran?') === false) {
+            throw new Exception("Database migration verification failed. Check migrate:status output.");
         }
-        
-        if (strpos($output, 'Migration table created successfully') !== false || 
-            strpos($output, 'Migrated:') !== false || 
-            strpos($output, 'Nothing to migrate') !== false) {
-            echo "<p class='log-success'>✅ Database migrations completed</p>";
-        } else {
-            throw new Exception("Database migration failed. Output: " . $output);
-        }
+        echo "<p class='log-success'>✅ Database migrations completed</p>";
         echo "</div>";
 
         // Create admin user
