@@ -58,17 +58,27 @@ function handleRequirementsCheck() {
         }
     }
     
-    // Check directory permissions
+    // Check directory permissions (recursive)
     $directories = [
         '../backend/storage',
         '../backend/bootstrap/cache',
-        '../backend/public/storage',
-        '../frontend/build',
+        '../backend/public',
     ];
     
     foreach ($directories as $dir) {
+        if (!is_dir($dir)) {
+            $errors[] = "Directory '{$dir}' not found.";
+            continue;
+        }
         if (!is_writable($dir)) {
             $errors[] = "Directory '{$dir}' must be writable.";
+        }
+        // Simple recursive write test
+        $testFile = rtrim($dir, '/') . '/.perm_test_' . uniqid() . '.tmp';
+        if (@file_put_contents($testFile, 'ok') === false) {
+            $errors[] = "Directory '{$dir}' is not writable by PHP process.";
+        } else {
+            @unlink($testFile);
         }
     }
     
@@ -193,6 +203,9 @@ function handleFinalInstallation() {
         
         // Set up default data
         setupDefaultData();
+        
+        // Post install: storage link and config cache
+        postInstallTasks();
         
         // Build frontend
         buildFrontend();
@@ -396,6 +409,21 @@ function setupDefaultData() {
         
     } catch (PDOException $e) {
         throw new Exception('Default data setup failed: ' . $e->getMessage());
+    }
+}
+
+function postInstallTasks() {
+    $backendPath = dirname(__DIR__) . '/backend';
+    try {
+        // Storage link
+        PHPUtils::execArtisan('storage:link', $backendPath);
+        // Cache config
+        PHPUtils::execArtisan('config:cache', $backendPath);
+        // Clear optimize caches
+        PHPUtils::execArtisan('optimize:clear', $backendPath);
+    } catch (Exception $e) {
+        // Non-fatal: log but do not stop installation
+        PHPUtils::log('Post-install tasks warning: ' . $e->getMessage());
     }
 }
 

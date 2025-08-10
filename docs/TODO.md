@@ -44,11 +44,11 @@ This document tracks implementation status and tasks across the entire codebase.
   - Move any legacy PHP views/routes to Laravel or frontend. [TODO]
 
 ## Installer (`/installer`)
-- Requirements step: improve permission checks for `backend/storage` and `bootstrap/cache` (recursive). [TODO]
+- Requirements step: improve permission checks for `backend/storage` and `bootstrap/cache` (recursive). [DONE]
 - Database step: add connectivity retry and better error messages. [TODO]
 - Application setup: validate URLs and email formats. [TODO]
 - Installation step: stream artisan output logs, capture errors. [TODO]
-- Post-install: link `storage`, run `php artisan config:cache`. [TODO]
+- Post-install: link `storage`, run `php artisan config:cache`. [DONE]
 - Frontend build: after build, copy `frontend/build` to `backend/public/app`. [DONE]
 
 ## Frontend (CRA)
@@ -72,9 +72,9 @@ This document tracks implementation status and tasks across the entire codebase.
 - Frontend React 18 + RRD v6 compatibility with existing code: basic review passed; full run pending actual build. [PENDING]
 
 ## Next actions
-- Add DB indexes/uniques where missing and ensure foreign keys have proper cascades.
-- Harden installer permissions checks and add post-install steps (`storage:link`, `config:cache`).
-- Test Auth and Admin flows end-to-end and patch any API validation gaps.
+- Add DB indexes/uniques where missing and ensure foreign keys have proper cascades. [START]
+- Harden database step errors and add retries; validate URLs/emails in installer. [NEXT]
+- Test Auth and Admin flows end-to-end and patch any API validation gaps. [THEN]
 
 ## Payments
 - Stripe
