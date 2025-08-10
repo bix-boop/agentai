@@ -34,5 +34,9 @@ class AppServiceProvider extends ServiceProvider
         if (config('app.env') === 'production') {
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
+
+        // Register middleware alias for admin
+        $router = $this->app['router'];
+        $router->aliasMiddleware('admin', \App\Http\Middleware\AdminMiddleware::class);
     }
 }
