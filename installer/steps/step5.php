@@ -33,14 +33,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "<div class='log-step'>";
         echo "<h4>📦 Setting up PHP dependencies...</h4>";
         
-        $composerExists = !empty(shell_exec('which composer 2>/dev/null'));
-        if ($composerExists) {
-            echo "<p>Composer detected - installing fresh dependencies...</p>";
-            PHPUtils::execAndStream("composer install --no-dev --optimize-autoloader 2>&1", $backendPath);
+        try {
+            [$composerCmd, $composerCwd] = PHPUtils::ensureComposer($backendPath);
+            echo "<p>Using Composer command: <code>" . htmlspecialchars($composerCmd) . "</code></p>";
+            PHPUtils::execAndStream("$composerCmd install --no-dev --optimize-autoloader 2>&1", $composerCwd);
             echo "<p class='log-success'>✅ PHP dependencies installed</p>";
-        } else {
-            echo "<p>Using pre-installed dependencies (Composer not required)...</p>";
-            echo "<p class='log-success'>✅ PHP dependencies ready</p>";
+        } catch (Exception $e) {
+            echo "<p class='log-warning'>⚠️ Composer setup failed: " . htmlspecialchars($e->getMessage()) . "</p>";
+            echo "<p>Attempting to continue with pre-installed vendor...</p>";
         }
         echo "</div>";
 
