@@ -12,6 +12,8 @@ class AIAssistant extends Model
 {
     use HasFactory;
 
+    protected $table = 'ai_assistants';
+
     protected $fillable = [
         'user_id',
         'category_id',
@@ -107,6 +109,30 @@ class AIAssistant extends Model
     }
 
     /**
+     * Get ratings for this AI assistant
+     */
+    public function ratings(): HasMany
+    {
+        return $this->hasMany(AIRating::class, 'ai_assistant_id');
+    }
+
+    /**
+     * Get public ratings for this AI assistant
+     */
+    public function publicRatings(): HasMany
+    {
+        return $this->ratings()->where('is_public', true);
+    }
+
+    /**
+     * Get users who favorited this AI assistant
+     */
+    public function favoritedBy(): HasMany
+    {
+        return $this->hasMany(UserFavorite::class, 'ai_assistant_id');
+    }
+
+    /**
      * Get the route key for the model
      */
     public function getRouteKeyName(): string
@@ -142,20 +168,6 @@ class AIAssistant extends Model
         }
 
         return true;
-    }
-
-    /**
-     * Get avatar URL with fallback
-     */
-    public function getAvatarUrlAttribute(): string
-    {
-        if ($this->avatar) {
-            return asset('storage/' . $this->avatar);
-        }
-        
-        // Generate a default avatar based on the assistant name
-        $hash = md5(strtolower(trim($this->name)));
-        return "https://ui-avatars.com/api/?name=" . urlencode($this->name) . "&size=200&background=" . substr($hash, 0, 6) . "&color=ffffff";
     }
 
     /**
@@ -307,6 +319,75 @@ class AIAssistant extends Model
             'argumentative' => 'Argumentative',
             'journalistic' => 'Journalistic',
             'academic' => 'Academic',
+            'conversational' => 'Conversational',
+            'technical' => 'Technical',
+            'creative' => 'Creative',
         ];
+    }
+
+    /**
+     * Calculate and update rating statistics
+     */
+    public function updateRatingStats(): void
+    {
+        $ratings = $this->publicRatings();
+        $totalRatings = $ratings->count();
+        $averageRating = $totalRatings > 0 ? $ratings->avg('rating') : 0;
+        
+        $this->update([
+            'average_rating' => round($averageRating, 2),
+            'total_ratings' => $totalRatings,
+        ]);
+    }
+
+    /**
+     * Check if user has favorited this AI
+     */
+    public function isFavoritedBy(User $user): bool
+    {
+        return UserFavorite::isFavorited($user->id, $this->id);
+    }
+
+    /**
+     * Get rating distribution
+     */
+    public function getRatingDistribution(): array
+    {
+        $distribution = [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
+        
+        $ratings = $this->publicRatings()
+                        ->selectRaw('rating, COUNT(*) as count')
+                        ->groupBy('rating')
+                        ->pluck('count', 'rating')
+                        ->toArray();
+        
+        return array_merge($distribution, $ratings);
+    }
+
+    /**
+     * Increment usage count and record analytics
+     */
+    public function recordUsage(User $user): void
+    {
+        $this->increment('usage_count');
+        
+        // Record analytics
+        Analytics::record('ai_assistant_usage', 1, (string)$this->id);
+        Analytics::record('category_views', 1, (string)$this->category_id);
+    }
+
+    /**
+     * Get avatar URL with fallback
+     */
+    public function getAvatarUrlAttribute(): string
+    {
+        if ($this->avatar && \Storage::exists($this->avatar)) {
+            return \Storage::url($this->avatar);
+        }
+        
+        // Generate a default avatar based on the assistant's name
+        return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . 
+               '&color=ffffff&background=' . substr(md5($this->name), 0, 6) . 
+               '&size=256&font-size=0.5';
     }
 }

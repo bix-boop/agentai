@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import AnalyticsDashboard from '../components/admin/AnalyticsDashboard';
 import { 
   ChartBarIcon,
   UsersIcon,
@@ -133,87 +134,9 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white rounded-lg shadow">
+        <div>
           {activeTab === 'overview' && (
-            <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-6">Platform Overview</h3>
-              
-              {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="bg-primary-50 p-6 rounded-lg">
-                  <div className="flex items-center">
-                    <UsersIcon className="h-8 w-8 text-primary-600" />
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-primary-600">Total Users</p>
-                      <p className="text-2xl font-bold text-primary-900">{stats.total_users}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-green-50 p-6 rounded-lg">
-                  <div className="flex items-center">
-                    <ChatBubbleLeftRightIcon className="h-8 w-8 text-green-600" />
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-green-600">Total Chats</p>
-                      <p className="text-2xl font-bold text-green-900">{stats.total_chats}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-purple-50 p-6 rounded-lg">
-                  <div className="flex items-center">
-                    <SparklesIcon className="h-8 w-8 text-purple-600" />
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-purple-600">AI Assistants</p>
-                      <p className="text-2xl font-bold text-purple-900">{stats.total_ai_assistants}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-yellow-50 p-6 rounded-lg">
-                  <div className="flex items-center">
-                    <CreditCardIcon className="h-8 w-8 text-yellow-600" />
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-yellow-600">Revenue</p>
-                      <p className="text-2xl font-bold text-yellow-900">${stats.total_revenue}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="border border-gray-200 rounded-lg p-6">
-                  <h4 className="font-medium text-gray-900 mb-4">Quick Actions</h4>
-                  <div className="space-y-3">
-                    <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">
-                      Create New AI Assistant
-                    </button>
-                    <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">
-                      View System Logs
-                    </button>
-                    <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">
-                      Manage Credit Packages
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="border border-gray-200 rounded-lg p-6">
-                  <h4 className="font-medium text-gray-900 mb-4">Recent Activity</h4>
-                  <div className="space-y-3">
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">System:</span> Installation completed successfully
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">Database:</span> All migrations applied
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">Admin:</span> Account created
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <AnalyticsDashboard />
           )}
 
           {activeTab === 'users' && (
